@@ -5,10 +5,77 @@
     <!-- Game Status -->
     <div class="col-12 mb-3">
         <div class="alert alert-info d-flex justify-content-between align-items-center">
-            <span><strong>Turn:</strong> {{ game.turn }} / {{ game.max_turns }}</span>
+            <span><strong>Turn:</strong> {{ game.turn }} / {{ game.max_turns }} <span class="badge bg-secondary">{{ game.difficulty.capitalize() }}</span></span>
             <button class="btn btn-sm btn-outline-primary" onclick="location.reload()">🔄 Refresh</button>
         </div>
     </div>
+
+    <!-- Previous Turn Summary -->
+    {% if game.previous_turn_summary %}
+    <div class="col-12 mb-3">
+        <div class="card border-info">
+            <div class="card-header bg-info text-white">
+                <strong>📜 Turn {{ game.previous_turn_summary.turn_number }} Summary</strong>
+            </div>
+            <div class="card-body">
+                {% if game.previous_turn_summary.actions %}
+                <h6 class="text-primary">Actions Taken:</h6>
+                <ul class="mb-2">
+                {% for action in game.previous_turn_summary.actions %}
+                    <li><strong>{{ action.name }}:</strong> {{ action.effects }}</li>
+                {% endfor %}
+                </ul>
+                {% endif %}
+
+                {% if game.previous_turn_summary.events %}
+                <h6 class="text-warning">Random Events:</h6>
+                <ul class="mb-2">
+                {% for event in game.previous_turn_summary.events %}
+                    <li>⚠️ {{ event }}</li>
+                {% endfor %}
+                </ul>
+                {% endif %}
+
+                {% if game.previous_turn_summary.income %}
+                <h6 class="text-success">Per-Turn Income:</h6>
+                <ul class="mb-2">
+                {% for income in game.previous_turn_summary.income %}
+                    <li>💰 {{ income }}</li>
+                {% endfor %}
+                </ul>
+                {% endif %}
+
+                {% if game.previous_turn_summary.drift %}
+                <h6 class="text-muted">Drift:</h6>
+                <ul class="mb-0">
+                {% for drift in game.previous_turn_summary.drift %}
+                    <li>📉 {{ drift }}</li>
+                {% endfor %}
+                </ul>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Current Turn Actions -->
+    {% if game.current_turn_actions %}
+    <div class="col-12 mb-3">
+        <div class="card border-primary">
+            <div class="card-header bg-primary text-white">
+                <strong>📝 Turn {{ game.turn }} - Actions Taken This Turn</strong>
+            </div>
+            <div class="card-body">
+                <ul class="mb-0">
+                {% for action in game.current_turn_actions %}
+                    <li>✓ <strong>{{ action.name }}:</strong> {{ action.effects }}</li>
+                {% endfor %}
+                </ul>
+                <small class="text-muted d-block mt-2">Click "End Turn" below when ready to advance.</small>
+            </div>
+        </div>
+    </div>
+    {% endif %}
 
     <!-- Messages -->
     <div class="col-12 mb-3" id="message-area">
@@ -109,17 +176,17 @@
             <div class="card-body">
                 <form method="POST" action="{{ url_for('action', action_name='harvest') }}">
                     <button type="submit" class="btn btn-success btn-sm w-100 mb-2">
-                        🌾 Harvest (+15 Grain, +10 Bronze)
+                        🌾 Harvest (+15G, +10B) <span class="badge bg-warning text-dark">FREE</span>
                     </button>
                 </form>
                 <form method="POST" action="{{ url_for('action', action_name='gather_timber') }}">
-                    <button type="submit" class="btn btn-success btn-sm w-100 mb-2">
-                        🪵 Gather Timber (-8 Grain → +10 Timber)
+                    <button type="submit" class="btn btn-outline-success btn-sm w-100 mb-2">
+                        🪵 Gather Timber (-8G → +10T)
                     </button>
                 </form>
                 <form method="POST" action="{{ url_for('action', action_name='fortify') }}">
-                    <button type="submit" class="btn btn-primary btn-sm w-100">
-                        ⚔️ Fortify (+5 Military, -5 Stability)
+                    <button type="submit" class="btn btn-outline-primary btn-sm w-100">
+                        ⚔️ Fortify (+5M, -5S)
                     </button>
                 </form>
             </div>
@@ -223,6 +290,20 @@
     </div>
 </div>
 
+<!-- END TURN BUTTON -->
+<div class="row mt-4">
+    <div class="col-12">
+        <form method="POST" action="{{ url_for('end_turn_route') }}">
+            <button type="submit" class="btn btn-warning btn-lg w-100 py-3">
+                ⏭️ <strong>END TURN {{ game.turn }}</strong> (Process Events & Advance)
+            </button>
+        </form>
+        <p class="text-center text-muted mt-2 mb-0">
+            <small>All end-of-turn income, events, and drift will be applied</small>
+        </p>
+    </div>
+</div>
+
 <!-- Legend -->
 <div class="row mt-3">
     <div class="col-12">
@@ -230,8 +311,9 @@
             <div class="card-body">
                 <small class="text-muted">
                     <strong>Legend:</strong>
-                    G=Grain | T=Timber | B=Bronze | M=Military | P=Prestige |
-                    ✅=Built | Turns advance automatically after successful actions
+                    G=Grain | T=Timber | B=Bronze | M=Military | S=Stability | P=Prestige |
+                    ✅=Built | <strong class="text-success">Harvest is FREE</strong> (doesn't end turn) |
+                    <strong class="text-warning">All other actions</strong> can be taken in same turn
                 </small>
             </div>
         </div>
