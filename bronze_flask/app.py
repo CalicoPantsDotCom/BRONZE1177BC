@@ -30,9 +30,10 @@ def index():
     return render_template('index.html')
 
 @app.route('/new_game')
-def new_game():
-    """Start a new game"""
-    game = GameState()
+@app.route('/new_game/<difficulty>')
+def new_game(difficulty='normal'):
+    """Start a new game with selected difficulty"""
+    game = GameState(difficulty=difficulty)
     session['game'] = game.to_dict()
     return redirect(url_for('game'))
 
@@ -55,8 +56,10 @@ def action(action_name):
     success = False
 
     # Direct actions
+    # HARVEST IS FREE - doesn't advance turn
     if action_name == 'harvest':
         success = game.harvest()
+    # All other actions cost the turn (handled in end_turn route)
     elif action_name == 'gather_timber':
         success = game.gather_timber()
     elif action_name == 'fortify':
@@ -98,9 +101,8 @@ def action(action_name):
     elif action_name == 'withdraw':
         success = game.withdraw_from_alliance()
 
-    # End turn only if action succeeded
-    if success:
-        game.end_turn()
+    # DO NOT auto-advance turn anymore
+    # Player must click "End Turn" button
 
     save_game(game)
 
@@ -113,6 +115,18 @@ def action(action_name):
             'game': game.to_dict()
         })
 
+    return redirect(url_for('game'))
+
+@app.route('/end_turn', methods=['POST'])
+def end_turn_route():
+    """End the current turn"""
+    game = get_game()
+    game.clear_messages()
+
+    # Process end-of-turn
+    game.end_turn()
+
+    save_game(game)
     return redirect(url_for('game'))
 
 @app.route('/victory')
