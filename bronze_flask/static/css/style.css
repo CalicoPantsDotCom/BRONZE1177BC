@@ -1,34 +1,37 @@
 /* BRONZE: 1177 BC - v2.1 Dark Theme (mobile-first, accessible) */
 
 :root {
-  /* Dark theme colors */
+  /* Dark theme colors - HIGH CONTRAST (WCAG AA compliant) */
   --bg: #0e0f13;
   --panel: #161821;
   --panel-2: #1c1f2b;
-  --text: #e8ebf1;
-  --muted: #a9afc1;
-  --border: #262b3a;
-  --accent: #e2b714;        /* gold */
-  --warn: #e66a6a;          /* crisis red */
-  --ok: #6ad18b;            /* stability green */
-  --info: #66b3ff;          /* knowledge blue */
-  --collapse: #ff6a88;      /* collapse bar */
+  --text: #f0f2f7;          /* Brighter for better contrast */
+  --muted: #b5bac9;         /* Brighter muted text */
+  --border: #3a4052;        /* More visible borders */
+  --accent: #ffd93d;        /* Brighter gold (WCAG AA) */
+  --warn: #ff6b6b;          /* Brighter red */
+  --ok: #51cf66;            /* Brighter green (WCAG AA) */
+  --info: #74b9ff;          /* Brighter blue */
+  --collapse: #ff6b9d;      /* Brighter pink */
 
-  /* Resource colors */
-  --grain: #ffdf66;
-  --bronze: #c98946;
-  --timber: #6bbf6b;
+  /* Resource colors - HIGHER CONTRAST */
+  --grain: #ffe066;
+  --bronze: #d4934d;
+  --timber: #5dd65d;
 
-  /* Metric colors */
-  --stability-color: #6ad18b;
-  --military-color: #ffb86c;
-  --prestige-color: #9b89ff;
+  /* Metric colors - HIGHER CONTRAST */
+  --stability-color: #51cf66;
+  --military-color: #ffb366;
+  --prestige-color: #a78bfa;
 
   /* Layout */
   --radius: 14px;
   --gap: 12px;
   --shadow: 0 6px 16px rgba(0,0,0,.35);
   --font: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Inter, "Helvetica Neue", Arial;
+
+  /* Focus ring for accessibility */
+  --focus-ring: 0 0 0 3px rgba(255, 217, 61, 0.5);
 }
 
 @media (prefers-color-scheme: light) {
@@ -42,15 +45,24 @@
   }
 }
 
-* { box-sizing: border-box; }
+* {
+  box-sizing: border-box;
+}
 
-html, body {
+html {
+  -webkit-text-size-adjust: 100%; /* Safari iOS fix */
+  -moz-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+
+body {
   margin: 0;
   padding: 0;
   background: var(--bg);
   color: var(--text);
   font-family: var(--font);
   line-height: 1.6;
+  overflow-x: hidden; /* Prevent horizontal scroll */
 }
 
 /* Navbar / Header */
@@ -102,11 +114,13 @@ html, body {
 /* Panels / Cards */
 .card {
   background: var(--panel);
-  border: 1px solid var(--border);
+  border: 2px solid var(--border); /* Thicker border for visibility */
   border-radius: var(--radius);
   padding: 16px;
   box-shadow: var(--shadow);
   margin-bottom: var(--gap);
+  min-width: 280px; /* Prevent skinny vertical pills */
+  overflow: hidden; /* Safari fix */
 }
 
 .card-header {
@@ -233,7 +247,7 @@ html, body {
 /* Buttons */
 .btn {
   appearance: none;
-  border: 1px solid var(--border);
+  border: 2px solid var(--border); /* Thicker border */
   background: var(--panel-2);
   color: var(--text);
   padding: 12px 16px;
@@ -241,17 +255,29 @@ html, body {
   cursor: pointer;
   font-weight: 600;
   letter-spacing: 0.2px;
-  transition: transform 0.05s ease, background 0.2s ease;
+  transition: transform 0.05s ease, background 0.2s ease, box-shadow 0.2s ease;
   min-height: 48px;
-  font-size: 0.95rem;
+  font-size: clamp(0.875rem, 2.5vw, 0.95rem); /* Responsive text */
   display: inline-block;
   text-align: center;
   text-decoration: none;
+  white-space: normal; /* Allow text wrap */
+  line-height: 1.4;
 }
 
 .btn:hover:not(:disabled) {
   transform: translateY(-1px);
   background: #232536;
+}
+
+.btn:focus {
+  outline: none;
+  box-shadow: var(--focus-ring); /* Visible focus ring */
+}
+
+.btn:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
 }
 
 .btn:active {
@@ -364,38 +390,45 @@ html, body {
   color: #17181f;
 }
 
-/* Grid Layout */
+/* Grid Layout - FIXED for narrow viewports */
 .row {
   display: grid;
   gap: var(--gap);
   margin-bottom: var(--gap);
+  grid-template-columns: 1fr; /* Single column on mobile */
 }
 
-.col-12 {
-  grid-column: span 1;
+.col-12,
+.col-md-6,
+.col-lg-4,
+.col-lg-8,
+.col-md-10 {
+  grid-column: span 1; /* Single column by default */
 }
 
-@media (min-width: 768px) {
+/* Tablet: 2 columns only if there's room for 280px cards */
+@media (min-width: 640px) {
   .row {
-    grid-template-columns: repeat(2, 1fr);
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
   }
 
   .col-md-6 {
-    grid-column: span 1;
+    grid-column: auto; /* Let auto-fit handle it */
   }
 
   .col-12 {
-    grid-column: span 2;
+    grid-column: 1 / -1; /* Full width */
   }
 }
 
+/* Desktop: 3 columns */
 @media (min-width: 992px) {
   .row {
-    grid-template-columns: repeat(3, 1fr);
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
   }
 
   .col-lg-4 {
-    grid-column: span 1;
+    grid-column: auto;
   }
 
   .col-lg-8 {
@@ -407,7 +440,7 @@ html, body {
   }
 
   .col-12 {
-    grid-column: span 3;
+    grid-column: 1 / -1; /* Full width */
   }
 }
 
@@ -451,30 +484,47 @@ html, body {
 .text-primary { color: var(--accent); }
 .text-white { color: var(--text); }
 
-/* Difficulty Selection */
+/* Difficulty Selection - PREVENT SKINNY PILLS */
 .btn-group {
-  display: flex;
-  gap: 10px;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 12px;
   justify-content: center;
-  flex-wrap: wrap;
+  max-width: 600px;
+  margin: 0 auto;
 }
 
-/* Landing Page */
+.btn-group .btn {
+  min-width: 160px; /* Minimum button width */
+  width: 100%;
+}
+
+/* On very narrow screens, stack vertically */
+@media (max-width: 400px) {
+  .btn-group {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Landing Page - RESPONSIVE TEXT SIZING */
 .display-3 {
-  font-size: 2.5rem;
+  font-size: clamp(1.75rem, 5vw, 2.5rem); /* Responsive scaling */
   font-weight: 700;
   margin-bottom: 1rem;
+  line-height: 1.2;
 }
 
 .display-4 {
-  font-size: 2rem;
+  font-size: clamp(1.5rem, 4vw, 2rem); /* Responsive scaling */
   font-weight: 700;
   text-shadow: 2px 2px 4px rgba(0,0,0,0.1);
+  line-height: 1.2;
 }
 
 .lead {
-  font-size: 1.2rem;
+  font-size: clamp(1rem, 3vw, 1.2rem); /* Responsive scaling */
   color: var(--muted);
+  line-height: 1.5;
 }
 
 .my-5 {
