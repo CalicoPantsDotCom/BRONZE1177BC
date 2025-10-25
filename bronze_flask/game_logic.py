@@ -6,7 +6,7 @@ Ported from v1.2.6 CLI version
 import random
 
 class GameState:
-    def __init__(self):
+    def __init__(self, difficulty='normal'):
         # Resources
         self.grain = 50
         self.timber = 20
@@ -36,10 +36,16 @@ class GameState:
 
         # Game state
         self.turn = 1
-        self.max_turns = 20
+        self.difficulty = difficulty
+        self.max_turns = {'easy': 30, 'normal': 20, 'hard': 15}.get(difficulty, 20)
         self.game_over = False
         self.victory_type = None
         self.message_log = []
+
+        # Action tracking (NEW)
+        self.current_turn_actions = []  # Actions taken this turn
+        self.previous_turn_summary = None  # Summary of last turn
+        self.turn_history = []  # Full history of all turns
 
     def to_dict(self):
         """Serialize game state for session storage"""
@@ -62,10 +68,14 @@ class GameState:
             'has_phalanx_formation': self.has_phalanx_formation,
             'has_diplomatic_marriage': self.has_diplomatic_marriage,
             'turn': self.turn,
+            'difficulty': self.difficulty,
             'max_turns': self.max_turns,
             'game_over': self.game_over,
             'victory_type': self.victory_type,
-            'message_log': self.message_log
+            'message_log': self.message_log,
+            'current_turn_actions': self.current_turn_actions,
+            'previous_turn_summary': self.previous_turn_summary,
+            'turn_history': self.turn_history
         }
 
     @classmethod
@@ -85,13 +95,21 @@ class GameState:
         """Clear message log"""
         self.message_log = []
 
+    def log_action(self, action_name, effects):
+        """Log an action taken this turn"""
+        self.current_turn_actions.append({
+            'name': action_name,
+            'effects': effects
+        })
+
     # Actions
     def harvest(self):
-        """Action: Harvest (+15 Grain, +10 Bronze)"""
+        """Action: Harvest (+15 Grain, +10 Bronze) - FREE ACTION"""
         self.grain += 15
         self.bronze += 10
-        self.add_message("Harvested: +15 Grain, +10 Bronze", "success")
-        return True
+        self.log_action("Harvest", "+15 Grain, +10 Bronze")
+        self.add_message("Harvested: +15 Grain, +10 Bronze (FREE - doesn't end turn)", "success")
+        return True  # Success but doesn't advance turn
 
     def gather_timber(self):
         """Action: Gather Timber (-8 Grain → +10 Timber)"""
@@ -101,6 +119,7 @@ class GameState:
 
         self.grain -= 8
         self.timber += 10
+        self.log_action("Gather Timber", "-8 Grain, +10 Timber")
         self.add_message("Gathered Timber: -8 Grain, +10 Timber", "success")
         return True
 
@@ -108,6 +127,7 @@ class GameState:
         """Action: Fortify (+5 Military, -5 Stability)"""
         self.military += 5
         self.stability -= 5
+        self.log_action("Fortify", "+5 Military, -5 Stability")
         self.add_message("Fortified: +5 Military, -5 Stability", "success")
         return True
 
@@ -123,6 +143,7 @@ class GameState:
         self.grain -= 15
         self.timber -= 10
         self.has_bronze_mine = True
+        self.log_action("Build Bronze Mine", "-15 Grain, -10 Timber | +2 Bronze/turn")
         self.add_message("Bronze Mine built! +2 Bronze per turn.", "success")
         return True
 
@@ -137,6 +158,7 @@ class GameState:
         self.grain -= 20
         self.timber -= 15
         self.has_granary = True
+        self.log_action("Build Granary", "-20 Grain, -15 Timber | +3 Grain/turn")
         self.add_message("Granary built! +3 Grain per turn.", "success")
         return True
 
@@ -152,6 +174,7 @@ class GameState:
         self.timber -= 20
         self.bronze -= 10
         self.has_barracks = True
+        self.log_action("Build Barracks", "-25 Grain, -20 Timber, -10 Bronze | +2 Military/turn")
         self.add_message("Barracks built! +2 Military per turn.", "success")
         return True
 
@@ -167,6 +190,7 @@ class GameState:
         self.timber -= 25
         self.bronze -= 15
         self.has_palace = True
+        self.log_action("Build Palace", "-30 Grain, -25 Timber, -15 Bronze | +3 Prestige/turn")
         self.add_message("Palace built! +3 Prestige per turn.", "success")
         return True
 
@@ -181,6 +205,7 @@ class GameState:
         self.grain -= 20
         self.timber -= 20
         self.has_lighthouse = True
+        self.log_action("Build Lighthouse", "-20 Grain, -20 Timber | +2 Prestige/turn, -1 Collapse/turn")
         self.add_message("Lighthouse built! +2 Prestige per turn, -1 Collapse per turn.", "success")
         return True
 
@@ -195,6 +220,7 @@ class GameState:
         self.grain -= 15
         self.timber -= 15
         self.has_watchtower = True
+        self.log_action("Build Watchtower", "-15 Grain, -15 Timber | +1 Military/turn")
         self.add_message("Watchtower built! +1 Military per turn.", "success")
         return True
 
@@ -210,6 +236,7 @@ class GameState:
         self.grain -= 20
         self.prestige -= 20
         self.has_imperial_bureaucracy = True
+        self.log_action("Research Imperial Bureaucracy", "-20 Grain, -20 Prestige | Reduces stability drift")
         self.add_message("Imperial Bureaucracy researched! Stability drift reduced.", "success")
         return True
 
@@ -224,6 +251,7 @@ class GameState:
         self.grain -= 25
         self.bronze -= 15
         self.has_tin_trade_routes = True
+        self.log_action("Research Tin Trade Routes", "-25 Grain, -15 Bronze | +1 Bronze/turn")
         self.add_message("Tin Trade Routes researched! +1 Bronze per turn.", "success")
         return True
 
@@ -238,6 +266,7 @@ class GameState:
         self.bronze -= 20
         self.military -= 25
         self.has_phalanx_formation = True
+        self.log_action("Research Phalanx Formation", "-20 Bronze, -25 Military | +2 Military/turn")
         self.add_message("Phalanx Formation researched! +2 Military per turn.", "success")
         return True
 
@@ -251,6 +280,7 @@ class GameState:
 
         self.prestige -= 30
         self.has_diplomatic_marriage = True
+        self.log_action("Research Diplomatic Marriage", "-30 Prestige | +1 Prestige/turn, -1 Collapse/turn")
         self.add_message("Diplomatic Marriage researched! +1 Prestige per turn, -1 Collapse per turn.", "success")
         return True
 
@@ -264,6 +294,7 @@ class GameState:
         self.bronze -= 10
         self.prestige += 5
         self.collapse -= 3
+        self.log_action("Send Tribute", "-15 Grain, -10 Bronze | +5 Prestige, -3 Collapse")
         self.add_message("Tribute sent: +5 Prestige, -3 Collapse", "success")
         return True
 
@@ -275,6 +306,7 @@ class GameState:
         self.prestige -= 15
         self.military += 5
         self.collapse -= 2
+        self.log_action("Form Alliance", "-15 Prestige | +5 Military, -2 Collapse")
         self.add_message("Alliance formed: +5 Military, -2 Collapse", "success")
         return True
 
@@ -286,6 +318,7 @@ class GameState:
         self.grain -= 20
         self.stability += 10
         self.prestige += 3
+        self.log_action("Host Festival", "-20 Grain | +10 Stability, +3 Prestige")
         self.add_message("Festival hosted: +10 Stability, +3 Prestige", "success")
         return True
 
@@ -299,49 +332,68 @@ class GameState:
         self.stability -= 15
         self.prestige -= 10
         self.collapse += 5
+        self.log_action("Withdraw from Alliance", "+10 Military, -15 Stability, -10 Prestige, +5 Collapse")
         self.add_message("Withdrew from alliance: +10 Military, -15 Stability, -10 Prestige, +5 Collapse", "warning")
         return True
 
     # End-of-turn logic
     def end_turn(self):
-        """Process end-of-turn effects"""
-        self.turn += 1
+        """Process end-of-turn effects and compile turn summary"""
+        # Build turn summary
+        summary = {
+            'turn_number': self.turn,
+            'actions': list(self.current_turn_actions),  # Copy actions taken
+            'events': [],
+            'income': [],
+            'drift': []
+        }
 
         # Per-turn yields from buildings
         if self.has_bronze_mine:
             self.bronze += 2
+            summary['income'].append("Bronze Mine: +2 Bronze")
         if self.has_granary:
             self.grain += 3
+            summary['income'].append("Granary: +3 Grain")
         if self.has_barracks:
             self.military += 2
+            summary['income'].append("Barracks: +2 Military")
         if self.has_palace:
             self.prestige += 3
+            summary['income'].append("Palace: +3 Prestige")
         if self.has_lighthouse:
             self.prestige += 2
             self.collapse -= 1
+            summary['income'].append("Lighthouse: +2 Prestige, -1 Collapse")
         if self.has_watchtower:
             self.military += 1
+            summary['income'].append("Watchtower: +1 Military")
 
         # Per-turn yields from techs
         if self.has_tin_trade_routes:
             self.bronze += 1
+            summary['income'].append("Tin Trade Routes: +1 Bronze")
         if self.has_phalanx_formation:
             self.military += 2
+            summary['income'].append("Phalanx Formation: +2 Military")
         if self.has_diplomatic_marriage:
             self.prestige += 1
             self.collapse -= 1
+            summary['income'].append("Diplomatic Marriage: +1 Prestige, -1 Collapse")
 
         # Drift calculations
         stability_drift = -2
         if self.has_imperial_bureaucracy:
             stability_drift = -1
         self.stability += stability_drift
+        summary['drift'].append(f"Stability: {stability_drift:+d}")
 
         collapse_drift = 1
         self.collapse += collapse_drift
+        summary['drift'].append(f"Collapse: {collapse_drift:+d}")
 
-        # Random events
-        self.trigger_random_event()
+        # Random events (stores in summary['events'])
+        self.trigger_random_event_for_summary(summary)
 
         # Clamp values
         self.grain = max(0, self.grain)
@@ -352,11 +404,17 @@ class GameState:
         self.prestige = max(0, min(100, self.prestige))
         self.collapse = max(0, min(100, self.collapse))
 
+        # Store summary and advance turn
+        self.previous_turn_summary = summary
+        self.turn_history.append(summary)
+        self.current_turn_actions = []  # Clear for next turn
+        self.turn += 1
+
         # Check win/loss conditions
         self.check_victory()
 
-    def trigger_random_event(self):
-        """Trigger a random event with 40% chance"""
+    def trigger_random_event_for_summary(self, summary):
+        """Trigger a random event with 40% chance and add to summary"""
         if random.random() > 0.4:
             return
 
@@ -385,12 +443,11 @@ class GameState:
         for event in events:
             cumulative += event["weight"]
             if rand <= cumulative:
-                self.apply_event(event)
+                self.apply_event_for_summary(event, summary)
                 break
 
-    def apply_event(self, event):
-        """Apply event effects"""
-        msg_parts = [f"EVENT: {event['name']}!"]
+    def apply_event_for_summary(self, event, summary):
+        """Apply event effects and record in summary"""
         effects = []
 
         if "grain" in event:
@@ -415,16 +472,9 @@ class GameState:
             self.collapse += event["collapse"]
             effects.append(f"{event['collapse']:+d} Collapse")
 
-        msg_parts.append(" | ".join(effects))
-
-        # Determine message type
-        msg_type = "info"
-        if event.get("collapse", 0) < 0:
-            msg_type = "success"
-        elif event.get("collapse", 0) > 0:
-            msg_type = "warning"
-
-        self.add_message(" - ".join(msg_parts), msg_type)
+        # Add to summary
+        event_description = f"{event['name']}: {', '.join(effects)}"
+        summary['events'].append(event_description)
 
     def check_victory(self):
         """Check win/loss conditions"""
