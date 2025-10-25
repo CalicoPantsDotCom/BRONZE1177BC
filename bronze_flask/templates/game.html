@@ -1,0 +1,240 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="row">
+    <!-- Game Status -->
+    <div class="col-12 mb-3">
+        <div class="alert alert-info d-flex justify-content-between align-items-center">
+            <span><strong>Turn:</strong> {{ game.turn }} / {{ game.max_turns }}</span>
+            <button class="btn btn-sm btn-outline-primary" onclick="location.reload()">🔄 Refresh</button>
+        </div>
+    </div>
+
+    <!-- Messages -->
+    <div class="col-12 mb-3" id="message-area">
+        {% for msg in game.message_log %}
+        <div class="alert alert-{{ msg.type }} alert-dismissible fade show" role="alert">
+            {{ msg.text }}
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+        {% endfor %}
+    </div>
+
+    <!-- Resources Panel -->
+    <div class="col-lg-4 col-md-6 mb-3">
+        <div class="card border-warning">
+            <div class="card-header bg-warning text-dark">
+                <strong>📦 Resources</strong>
+            </div>
+            <div class="card-body">
+                <div class="d-flex justify-content-between mb-2">
+                    <span>🌾 Grain:</span>
+                    <strong>{{ game.grain }}</strong>
+                </div>
+                <div class="d-flex justify-content-between mb-2">
+                    <span>🪵 Timber:</span>
+                    <strong>{{ game.timber }}</strong>
+                </div>
+                <div class="d-flex justify-content-between">
+                    <span>🔶 Bronze:</span>
+                    <strong>{{ game.bronze }}</strong>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Metrics Panel -->
+    <div class="col-lg-4 col-md-6 mb-3">
+        <div class="card border-info">
+            <div class="card-header bg-info text-white">
+                <strong>📊 Core Metrics</strong>
+            </div>
+            <div class="card-body">
+                <div class="d-flex justify-content-between mb-2">
+                    <span>⚔️ Military:</span>
+                    <strong>{{ game.military }}</strong>
+                </div>
+                <div class="d-flex justify-content-between mb-2">
+                    <span>🛡️ Stability:</span>
+                    <strong class="{{ 'text-danger' if game.stability < 30 else 'text-success' if game.stability > 60 else '' }}">
+                        {{ game.stability }}
+                    </strong>
+                </div>
+                <div class="d-flex justify-content-between">
+                    <span>👑 Prestige:</span>
+                    <strong>{{ game.prestige }}</strong>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Crisis Panel -->
+    <div class="col-lg-4 col-md-12 mb-3">
+        <div class="card border-danger">
+            <div class="card-header bg-danger text-white">
+                <strong>⚠️ Crisis Level</strong>
+            </div>
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center">
+                    <span>🔥 Collapse:</span>
+                    <h3 class="mb-0 {{ 'text-danger' if game.collapse > 70 else 'text-warning' if game.collapse > 40 else 'text-success' }}">
+                        {{ game.collapse }}
+                    </h3>
+                </div>
+                <div class="progress mt-2" style="height: 20px;">
+                    <div class="progress-bar
+                        {{ 'bg-danger' if game.collapse > 70 else 'bg-warning' if game.collapse > 40 else 'bg-success' }}"
+                        role="progressbar"
+                        style="width: {{ game.collapse }}%">
+                        {{ game.collapse }}%
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Actions -->
+<div class="row">
+    <div class="col-12">
+        <h4 class="mb-3">🎮 Actions</h4>
+    </div>
+
+    <!-- Basic Actions -->
+    <div class="col-lg-4 col-md-6 mb-3">
+        <div class="card h-100">
+            <div class="card-header">
+                <strong>Basic Actions</strong>
+            </div>
+            <div class="card-body">
+                <form method="POST" action="{{ url_for('action', action_name='harvest') }}">
+                    <button type="submit" class="btn btn-success btn-sm w-100 mb-2">
+                        🌾 Harvest (+15 Grain, +10 Bronze)
+                    </button>
+                </form>
+                <form method="POST" action="{{ url_for('action', action_name='gather_timber') }}">
+                    <button type="submit" class="btn btn-success btn-sm w-100 mb-2">
+                        🪵 Gather Timber (-8 Grain → +10 Timber)
+                    </button>
+                </form>
+                <form method="POST" action="{{ url_for('action', action_name='fortify') }}">
+                    <button type="submit" class="btn btn-primary btn-sm w-100">
+                        ⚔️ Fortify (+5 Military, -5 Stability)
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Buildings -->
+    <div class="col-lg-4 col-md-6 mb-3">
+        <div class="card h-100">
+            <div class="card-header">
+                <strong>🏗️ Buildings</strong>
+            </div>
+            <div class="card-body">
+                <form method="POST" action="{{ url_for('action', action_name='build_bronze_mine') }}">
+                    <button type="submit" class="btn btn-outline-warning btn-sm w-100 mb-2" {{ 'disabled' if game.has_bronze_mine else '' }}>
+                        {{ '✅' if game.has_bronze_mine else '🔶' }} Bronze Mine (15G, 10T)
+                    </button>
+                </form>
+                <form method="POST" action="{{ url_for('action', action_name='build_granary') }}">
+                    <button type="submit" class="btn btn-outline-warning btn-sm w-100 mb-2" {{ 'disabled' if game.has_granary else '' }}>
+                        {{ '✅' if game.has_granary else '🌾' }} Granary (20G, 15T)
+                    </button>
+                </form>
+                <form method="POST" action="{{ url_for('action', action_name='build_barracks') }}">
+                    <button type="submit" class="btn btn-outline-warning btn-sm w-100 mb-2" {{ 'disabled' if game.has_barracks else '' }}>
+                        {{ '✅' if game.has_barracks else '⚔️' }} Barracks (25G, 20T, 10B)
+                    </button>
+                </form>
+                <form method="POST" action="{{ url_for('action', action_name='build_palace') }}">
+                    <button type="submit" class="btn btn-outline-warning btn-sm w-100 mb-2" {{ 'disabled' if game.has_palace else '' }}>
+                        {{ '✅' if game.has_palace else '👑' }} Palace (30G, 25T, 15B)
+                    </button>
+                </form>
+                <form method="POST" action="{{ url_for('action', action_name='build_lighthouse') }}">
+                    <button type="submit" class="btn btn-outline-warning btn-sm w-100 mb-2" {{ 'disabled' if game.has_lighthouse else '' }}>
+                        {{ '✅' if game.has_lighthouse else '🗼' }} Lighthouse (20G, 20T)
+                    </button>
+                </form>
+                <form method="POST" action="{{ url_for('action', action_name='build_watchtower') }}">
+                    <button type="submit" class="btn btn-outline-warning btn-sm w-100" {{ 'disabled' if game.has_watchtower else '' }}>
+                        {{ '✅' if game.has_watchtower else '🏰' }} Watchtower (15G, 15T)
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Research & Diplomacy -->
+    <div class="col-lg-4 col-md-12 mb-3">
+        <div class="card h-100">
+            <div class="card-header">
+                <strong>🔬 Research & 🤝 Diplomacy</strong>
+            </div>
+            <div class="card-body">
+                <small class="text-muted d-block mb-2">Research:</small>
+                <form method="POST" action="{{ url_for('action', action_name='research_imperial_bureaucracy') }}">
+                    <button type="submit" class="btn btn-outline-info btn-sm w-100 mb-2" {{ 'disabled' if game.has_imperial_bureaucracy else '' }}>
+                        {{ '✅' if game.has_imperial_bureaucracy else '📜' }} Imperial Bureaucracy (20G, 20P)
+                    </button>
+                </form>
+                <form method="POST" action="{{ url_for('action', action_name='research_tin_trade_routes') }}">
+                    <button type="submit" class="btn btn-outline-info btn-sm w-100 mb-2" {{ 'disabled' if game.has_tin_trade_routes else '' }}>
+                        {{ '✅' if game.has_tin_trade_routes else '🚢' }} Tin Trade Routes (25G, 15B)
+                    </button>
+                </form>
+                <form method="POST" action="{{ url_for('action', action_name='research_phalanx_formation') }}">
+                    <button type="submit" class="btn btn-outline-info btn-sm w-100 mb-2" {{ 'disabled' if game.has_phalanx_formation else '' }}>
+                        {{ '✅' if game.has_phalanx_formation else '🛡️' }} Phalanx (20B, 25M)
+                    </button>
+                </form>
+                <form method="POST" action="{{ url_for('action', action_name='research_diplomatic_marriage') }}">
+                    <button type="submit" class="btn btn-outline-info btn-sm w-100 mb-3" {{ 'disabled' if game.has_diplomatic_marriage else '' }}>
+                        {{ '✅' if game.has_diplomatic_marriage else '💍' }} Diplomatic Marriage (30P)
+                    </button>
+                </form>
+
+                <small class="text-muted d-block mb-2">Diplomacy:</small>
+                <form method="POST" action="{{ url_for('action', action_name='send_tribute') }}">
+                    <button type="submit" class="btn btn-outline-secondary btn-sm w-100 mb-2">
+                        🎁 Send Tribute (15G, 10B)
+                    </button>
+                </form>
+                <form method="POST" action="{{ url_for('action', action_name='form_alliance') }}">
+                    <button type="submit" class="btn btn-outline-secondary btn-sm w-100 mb-2">
+                        🤝 Form Alliance (15P)
+                    </button>
+                </form>
+                <form method="POST" action="{{ url_for('action', action_name='host_festival') }}">
+                    <button type="submit" class="btn btn-outline-secondary btn-sm w-100 mb-3">
+                        🎉 Host Festival (20G)
+                    </button>
+                </form>
+
+                <form method="POST" action="{{ url_for('action', action_name='withdraw') }}">
+                    <button type="submit" class="btn btn-danger btn-sm w-100" {{ 'disabled' if game.stability < 45 else '' }}>
+                        ⚠️ Withdraw from Alliance
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Legend -->
+<div class="row mt-3">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-body">
+                <small class="text-muted">
+                    <strong>Legend:</strong>
+                    G=Grain | T=Timber | B=Bronze | M=Military | P=Prestige |
+                    ✅=Built | Turns advance automatically after successful actions
+                </small>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
