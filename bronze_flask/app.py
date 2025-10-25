@@ -37,6 +37,18 @@ def new_game(difficulty='normal'):
     session['game'] = game.to_dict()
     return redirect(url_for('game'))
 
+@app.route('/choose_difficulty/<difficulty>')
+def choose_difficulty(difficulty='normal'):
+    """Set difficulty and redirect to game"""
+    session['difficulty'] = difficulty
+    return redirect(url_for('new_game', difficulty=difficulty))
+
+@app.route('/choose_path/<path>')
+def choose_path(path='preservation'):
+    """Set victory path preference and redirect to game"""
+    session['preferred_path'] = path
+    return redirect(url_for('game'))
+
 @app.route('/game')
 def game():
     """Main game interface"""
