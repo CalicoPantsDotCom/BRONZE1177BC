@@ -1,0 +1,64 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-lg-8 col-md-10">
+        <div class="text-center my-5">
+            <h1 class="display-3 mb-4">⚔️ BRONZE: 1177 BC</h1>
+            <p class="lead">
+                A turn-based strategy about the Late Bronze Age Collapse.
+            </p>
+            <p class="text-muted">
+                Govern a kingdom through crisis and pursue one of two paths:
+            </p>
+
+            <div class="row my-4">
+                <div class="col-md-6 mb-3">
+                    <div class="card border-success">
+                        <div class="card-body">
+                            <h5 class="card-title text-success">🕊️ Preservation Path</h5>
+                            <p class="card-text">Reduce Collapse to 0 and save civilization.</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-6 mb-3">
+                    <div class="card border-warning">
+                        <div class="card-body">
+                            <h5 class="card-title text-warning">⚡ Vacuum Path</h5>
+                            <p class="card-text">Survive 20 turns with Collapse ≥80 and Military ≥50.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <a href="{{ url_for('new_game') }}" class="btn btn-primary btn-lg px-5 mb-3">
+                Start New Game
+            </a>
+
+            <div class="card mt-4">
+                <div class="card-header">
+                    <strong>How to Play</strong>
+                </div>
+                <div class="card-body text-start">
+                    <ul>
+                        <li><strong>Harvest:</strong> Gather resources (+15 Grain, +10 Bronze)</li>
+                        <li><strong>Gather Timber:</strong> Convert Grain to Timber (-8 Grain → +10 Timber)</li>
+                        <li><strong>Build:</strong> Construct buildings for per-turn bonuses</li>
+                        <li><strong>Research:</strong> Unlock technologies to improve efficiency</li>
+                        <li><strong>Diplomacy:</strong> Form alliances and host festivals</li>
+                        <li><strong>Fortify:</strong> Increase military strength (+5 Military, -5 Stability)</li>
+                        <li><strong>Withdraw:</strong> Risky move for military boost (requires Stability ≥45)</li>
+                    </ul>
+
+                    <hr>
+
+                    <p class="mb-0">
+                        <strong>Game Length:</strong> 15-20 turns (~10 minutes)<br>
+                        <strong>Turns advance automatically</strong> after successful actions.
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
