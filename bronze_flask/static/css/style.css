@@ -1,53 +1,45 @@
-/* BRONZE: 1177 BC - v2.1 Dark Theme (mobile-first, accessible) */
+/* BRONZE: 1177 BC - v2.2 Lighter Dark Theme (Discord/Slack style) */
 
 :root {
-  /* Dark theme colors - MAXIMUM CONTRAST (WCAG AAA compliant) */
-  --bg: #0e0f13;
-  --panel: #1a1d28;         /* Slightly lighter for better contrast */
-  --panel-2: #242938;       /* Even lighter for depth */
-  --text: #ffffff;          /* Pure white for maximum readability */
-  --muted: #d0d5e0;         /* Much brighter muted text */
-  --border: #4a5570;        /* Much more visible borders */
-  --accent: #ffeb3b;        /* Very bright yellow (almost neon) */
-  --warn: #ff8787;          /* Brighter red */
-  --ok: #69db7c;            /* Much brighter green (WCAG AAA) */
-  --info: #91d5ff;          /* Much brighter blue */
-  --collapse: #ff85b3;      /* Brighter pink */
+  /* Lighter dark mode - like Discord/Slack (much easier to read!) */
+  --bg: #2b2d31;            /* Discord-style lighter dark gray */
+  --panel: #383a40;         /* Lighter panels for cards */
+  --panel-2: #404249;       /* Even lighter for depth */
+  --text: #f2f3f5;          /* Soft white (not pure white - easier on eyes) */
+  --muted: #b5bac1;         /* Light gray for secondary text */
+  --border: #4e5058;        /* Visible but subtle borders */
 
-  /* Resource colors - MAXIMUM CONTRAST */
-  --grain: #ffed88;         /* Bright yellow */
-  --bronze: #f0a868;        /* Bright orange-gold */
-  --timber: #7ae582;        /* Bright green */
+  /* Vibrant accent colors (not neon, just vibrant) */
+  --accent: #faa61a;        /* Warm gold/orange (Bronze Age vibe!) */
+  --warn: #f23f43;          /* Clean red */
+  --ok: #23a55a;            /* Discord green */
+  --info: #5865f2;          /* Discord blue */
 
-  /* Metric colors - MAXIMUM CONTRAST */
-  --stability-color: #69db7c;  /* Bright green */
-  --military-color: #ffc078;   /* Bright orange */
-  --prestige-color: #b794f6;   /* Bright purple */
+  /* Resource colors - vibrant and clear */
+  --grain: #f0b232;         /* Golden wheat */
+  --bronze: #cd7f32;        /* Actual bronze color! */
+  --timber: #56ae57;        /* Forest green */
+
+  /* Metric colors - vibrant */
+  --stability-color: #23a55a;   /* Green */
+  --military-color: #ed4245;    /* Red */
+  --prestige-color: #5865f2;    /* Blue */
 
   /* Layout */
-  --radius: 14px;
+  --radius: 12px;
   --gap: 12px;
-  --shadow: 0 6px 16px rgba(0,0,0,.35);
+  --shadow: 0 2px 10px rgba(0,0,0,.2);
   --font: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Inter, "Helvetica Neue", Arial;
 
-  /* Focus ring for accessibility */
-  --focus-ring: 0 0 0 3px rgba(255, 235, 59, 0.6);  /* Brighter yellow focus */
-}
-
-@media (prefers-color-scheme: light) {
-  :root {
-    --bg: #f7f8fb;
-    --panel: #ffffff;
-    --panel-2: #f2f4f8;
-    --text: #182026;
-    --border: #e1e5ee;
-    --shadow: 0 4px 12px rgba(0,0,0,.1);
-  }
+  /* Focus ring */
+  --focus-ring: 0 0 0 3px rgba(250, 166, 26, 0.4);
 }
 
 * {
   box-sizing: border-box;
 }
+
+/* No light mode toggle - consistent lighter dark theme everywhere */
 
 html {
   -webkit-text-size-adjust: 100%; /* Safari iOS fix */
@@ -149,27 +141,27 @@ body {
 }
 
 .alert-info {
-  background: rgba(145, 213, 255, 0.15);  /* Brighter blue tint */
-  border-color: rgba(145, 213, 255, 0.5); /* More visible border */
-  color: var(--info);
+  background: rgba(88, 101, 242, 0.1);
+  border-color: rgba(88, 101, 242, 0.3);
+  color: #7078f5;
 }
 
 .alert-success {
-  background: rgba(105, 219, 124, 0.15);  /* Brighter green tint */
-  border-color: rgba(105, 219, 124, 0.5); /* More visible border */
-  color: var(--ok);
+  background: rgba(35, 165, 90, 0.1);
+  border-color: rgba(35, 165, 90, 0.3);
+  color: #2fb866;
 }
 
 .alert-warning {
-  background: rgba(255, 235, 59, 0.15);   /* Brighter yellow tint */
-  border-color: rgba(255, 235, 59, 0.5);  /* More visible border */
-  color: var(--accent);
+  background: rgba(250, 166, 26, 0.1);
+  border-color: rgba(250, 166, 26, 0.3);
+  color: #ffb732;
 }
 
 .alert-danger {
-  background: rgba(255, 135, 135, 0.15);  /* Brighter red tint */
-  border-color: rgba(255, 135, 135, 0.5); /* More visible border */
-  color: var(--warn);
+  background: rgba(242, 63, 67, 0.1);
+  border-color: rgba(242, 63, 67, 0.3);
+  color: #ff5b5e;
 }
 
 .alert .btn-close {
@@ -229,19 +221,19 @@ body {
 }
 
 .progress-bar.bg-success {
-  background: linear-gradient(90deg, var(--ok), #51cf66);  /* Bright green gradient */
+  background: linear-gradient(90deg, #23a55a, #2fb866);
 }
 
 .progress-bar.bg-info {
-  background: linear-gradient(90deg, var(--info), #74b9ff);  /* Bright blue gradient */
+  background: linear-gradient(90deg, #5865f2, #7078f5);
 }
 
 .progress-bar.bg-warning {
-  background: linear-gradient(90deg, var(--accent), #ffd93d);  /* Bright yellow gradient */
+  background: linear-gradient(90deg, #faa61a, #ffb732);
 }
 
 .progress-bar.bg-danger {
-  background: linear-gradient(90deg, var(--warn), #ff6b6b);  /* Bright red gradient */
+  background: linear-gradient(90deg, #f23f43, #ff5b5e);
 }
 
 /* Buttons */
@@ -267,7 +259,8 @@ body {
 
 .btn:hover:not(:disabled) {
   transform: translateY(-1px);
-  background: #2d3348;  /* Lighter for better visibility */
+  background: #4e5058;  /* Lighter on hover */
+  border-color: #5e6068;
 }
 
 .btn:focus {
@@ -291,30 +284,50 @@ body {
 
 .btn-primary {
   background: var(--accent);
-  color: #0a0b0e;          /* Darker text for contrast on bright bg */
+  color: #1e1f22;          /* Dark text on bright button */
   border-color: transparent;
-  font-weight: 700;
+  font-weight: 600;
+}
+
+.btn-primary:hover:not(:disabled) {
+  background: #ffb732;     /* Brighter on hover */
+  transform: translateY(-1px);
 }
 
 .btn-success {
   background: var(--ok);
-  color: #0a0b0e;          /* Darker text for contrast on bright bg */
+  color: white;
   border-color: transparent;
-  font-weight: 700;
+  font-weight: 600;
+}
+
+.btn-success:hover:not(:disabled) {
+  background: #2fb866;     /* Brighter on hover */
+  transform: translateY(-1px);
 }
 
 .btn-warning {
   background: var(--accent);
-  color: #0a0b0e;          /* Darker text for contrast on bright bg */
+  color: #1e1f22;          /* Dark text on bright button */
   border-color: transparent;
-  font-weight: 700;
+  font-weight: 600;
+}
+
+.btn-warning:hover:not(:disabled) {
+  background: #ffb732;     /* Brighter on hover */
+  transform: translateY(-1px);
 }
 
 .btn-danger {
   background: var(--warn);
-  color: #0a0b0e;          /* Darker text for contrast on bright bg */
+  color: white;
   border-color: transparent;
-  font-weight: 700;
+  font-weight: 600;
+}
+
+.btn-danger:hover:not(:disabled) {
+  background: #ff5b5e;     /* Brighter on hover */
+  transform: translateY(-1px);
 }
 
 .btn-outline-primary {
@@ -382,18 +395,18 @@ body {
 
 .bg-warning {
   background: var(--accent);
-  color: #0a0b0e;          /* Darker text for contrast */
-  font-weight: 700;
+  color: #1e1f22;
+  font-weight: 600;
 }
 
 .bg-secondary {
   background: var(--muted);
-  color: #0a0b0e;          /* Darker text for contrast */
-  font-weight: 700;
+  color: #1e1f22;
+  font-weight: 600;
 }
 
 .text-dark {
-  color: #0a0b0e;
+  color: #1e1f22;
 }
 
 /* Grid Layout - FIXED for narrow viewports */
@@ -580,11 +593,11 @@ footer small {
 .border-primary { border-color: var(--accent) !important; }
 
 /* Card header backgrounds */
-.card-header.bg-warning { background: rgba(255, 235, 59, 0.18); border-color: var(--accent); color: var(--text); }
-.card-header.bg-info { background: rgba(145, 213, 255, 0.18); border-color: var(--info); color: var(--text); }
-.card-header.bg-danger { background: rgba(255, 135, 135, 0.18); border-color: var(--warn); color: var(--text); }
-.card-header.bg-success { background: rgba(105, 219, 124, 0.18); border-color: var(--ok); color: var(--text); }
-.card-header.bg-primary { background: rgba(255, 235, 59, 0.18); border-color: var(--accent); color: var(--text); }
+.card-header.bg-warning { background: rgba(250, 166, 26, 0.12); border-color: var(--accent); color: var(--text); }
+.card-header.bg-info { background: rgba(88, 101, 242, 0.12); border-color: var(--info); color: var(--text); }
+.card-header.bg-danger { background: rgba(242, 63, 67, 0.12); border-color: var(--warn); color: var(--text); }
+.card-header.bg-success { background: rgba(35, 165, 90, 0.12); border-color: var(--ok); color: var(--text); }
+.card-header.bg-primary { background: rgba(250, 166, 26, 0.12); border-color: var(--accent); color: var(--text); }
 
 /* Responsive text */
 @media (max-width: 768px) {
