@@ -21,6 +21,87 @@
     </div>
 </div>
 
+<!-- Main Game Layout: Sidebar + Content -->
+<div class="game-layout">
+    <!-- Sidebar: Turn History -->
+    <aside class="game-sidebar">
+        <div class="sidebar-toggle" onclick="document.querySelector('.game-sidebar').classList.toggle('open')">
+            📜 History
+        </div>
+
+        <div class="sidebar-content">
+            <!-- Current Turn Actions -->
+            {% if game.current_turn_actions %}
+            <div class="card border-primary mb-3">
+                <div class="card-header bg-primary text-white">
+                    <strong>📝 Turn {{ game.turn }} Actions</strong>
+                </div>
+                <div class="card-body">
+                    <ul class="mb-0">
+                    {% for action in game.current_turn_actions %}
+                        <li>✓ <strong>{{ action.name }}:</strong> {{ action.effects }}</li>
+                    {% endfor %}
+                    </ul>
+                </div>
+            </div>
+            {% endif %}
+
+            <!-- Previous Turn Summary -->
+            {% if game.previous_turn_summary %}
+            <div class="card border-info mb-3">
+                <div class="card-header bg-info text-white">
+                    <strong>📜 Turn {{ game.previous_turn_summary.turn_number }} Summary</strong>
+                </div>
+                <div class="card-body">
+                    {% if game.previous_turn_summary.actions %}
+                    <h6 class="text-primary">Actions:</h6>
+                    <ul class="mb-2" style="font-size: 0.85rem;">
+                    {% for action in game.previous_turn_summary.actions %}
+                        <li><strong>{{ action.name }}:</strong> {{ action.effects }}</li>
+                    {% endfor %}
+                    </ul>
+                    {% endif %}
+
+                    {% if game.previous_turn_summary.events %}
+                    <h6 class="text-warning">Events:</h6>
+                    <ul class="mb-2" style="font-size: 0.85rem;">
+                    {% for event in game.previous_turn_summary.events %}
+                        <li>⚠️ {{ event }}</li>
+                    {% endfor %}
+                    </ul>
+                    {% endif %}
+
+                    {% if game.previous_turn_summary.income %}
+                    <h6 class="text-success">Income:</h6>
+                    <ul class="mb-2" style="font-size: 0.85rem;">
+                    {% for income in game.previous_turn_summary.income %}
+                        <li>💰 {{ income }}</li>
+                    {% endfor %}
+                    </ul>
+                    {% endif %}
+
+                    {% if game.previous_turn_summary.drift %}
+                    <h6 class="text-muted">Drift:</h6>
+                    <ul class="mb-0" style="font-size: 0.85rem;">
+                    {% for drift in game.previous_turn_summary.drift %}
+                        <li>📉 {{ drift }}</li>
+                    {% endfor %}
+                    </ul>
+                    {% endif %}
+                </div>
+            </div>
+            {% endif %}
+
+            {% if not game.current_turn_actions and not game.previous_turn_summary %}
+            <div class="alert alert-info">
+                <small>Turn history will appear here</small>
+            </div>
+            {% endif %}
+        </div>
+    </aside>
+
+    <!-- Main Content Area -->
+    <main class="game-content">
 <div class="row">
     <!-- Game Status -->
     <div class="col-12 mb-3">
@@ -29,73 +110,6 @@
             <button class="btn btn-sm btn-outline-primary" onclick="location.reload()">🔄 Refresh</button>
         </div>
     </div>
-
-    <!-- Previous Turn Summary -->
-    {% if game.previous_turn_summary %}
-    <div class="col-12 mb-3">
-        <div class="card border-info">
-            <div class="card-header bg-info text-white">
-                <strong>📜 Turn {{ game.previous_turn_summary.turn_number }} Summary</strong>
-            </div>
-            <div class="card-body">
-                {% if game.previous_turn_summary.actions %}
-                <h6 class="text-primary">Actions Taken:</h6>
-                <ul class="mb-2">
-                {% for action in game.previous_turn_summary.actions %}
-                    <li><strong>{{ action.name }}:</strong> {{ action.effects }}</li>
-                {% endfor %}
-                </ul>
-                {% endif %}
-
-                {% if game.previous_turn_summary.events %}
-                <h6 class="text-warning">Random Events:</h6>
-                <ul class="mb-2">
-                {% for event in game.previous_turn_summary.events %}
-                    <li>⚠️ {{ event }}</li>
-                {% endfor %}
-                </ul>
-                {% endif %}
-
-                {% if game.previous_turn_summary.income %}
-                <h6 class="text-success">Per-Turn Income:</h6>
-                <ul class="mb-2">
-                {% for income in game.previous_turn_summary.income %}
-                    <li>💰 {{ income }}</li>
-                {% endfor %}
-                </ul>
-                {% endif %}
-
-                {% if game.previous_turn_summary.drift %}
-                <h6 class="text-muted">Drift:</h6>
-                <ul class="mb-0">
-                {% for drift in game.previous_turn_summary.drift %}
-                    <li>📉 {{ drift }}</li>
-                {% endfor %}
-                </ul>
-                {% endif %}
-            </div>
-        </div>
-    </div>
-    {% endif %}
-
-    <!-- Current Turn Actions -->
-    {% if game.current_turn_actions %}
-    <div class="col-12 mb-3">
-        <div class="card border-primary">
-            <div class="card-header bg-primary text-white">
-                <strong>📝 Turn {{ game.turn }} - Actions Taken This Turn</strong>
-            </div>
-            <div class="card-body">
-                <ul class="mb-0">
-                {% for action in game.current_turn_actions %}
-                    <li>✓ <strong>{{ action.name }}:</strong> {{ action.effects }}</li>
-                {% endfor %}
-                </ul>
-                <small class="text-muted d-block mt-2">Click "End Turn" below when ready to advance.</small>
-            </div>
-        </div>
-    </div>
-    {% endif %}
 
     <!-- Messages -->
     <div class="col-12 mb-3" id="message-area">
@@ -350,4 +364,9 @@
         </div>
     </div>
 </div>
+
+</div> <!-- end row -->
+    </main> <!-- end game-content -->
+</div> <!-- end game-layout -->
+
 {% endblock %}
