@@ -163,6 +163,10 @@ class GameState:
 
     def fortify(self):
         """Action: Fortify (+5 Military, -5 Stability) - PAID ACTION"""
+        if self.has_taken_paid_action:
+            self.add_message("❌ You've already taken your paid action this turn!", "danger")
+            return False
+
         self.military += 5
         self.stability -= 5
         self.has_taken_paid_action = True
@@ -173,6 +177,9 @@ class GameState:
 
     # Building actions
     def build_bronze_mine(self):
+        if self.has_taken_paid_action:
+            self.add_message("❌ You've already taken your paid action this turn!", "danger")
+            return False
         if self.has_bronze_mine:
             self.add_message("Bronze Mine already built!", "warning")
             return False
@@ -190,6 +197,9 @@ class GameState:
         return True
 
     def build_granary(self):
+        if self.has_taken_paid_action:
+            self.add_message("❌ You've already taken your paid action this turn!", "danger")
+            return False
         if self.has_granary:
             self.add_message("Granary already built!", "warning")
             return False
@@ -207,6 +217,9 @@ class GameState:
         return True
 
     def build_barracks(self):
+        if self.has_taken_paid_action:
+            self.add_message("❌ You've already taken your paid action this turn!", "danger")
+            return False
         if self.has_barracks:
             self.add_message("Barracks already built!", "warning")
             return False
@@ -225,6 +238,9 @@ class GameState:
         return True
 
     def build_palace(self):
+        if self.has_taken_paid_action:
+            self.add_message("❌ You've already taken your paid action this turn!", "danger")
+            return False
         if self.has_palace:
             self.add_message("Palace already built!", "warning")
             return False
@@ -243,6 +259,9 @@ class GameState:
         return True
 
     def build_lighthouse(self):
+        if self.has_taken_paid_action:
+            self.add_message("❌ You've already taken your paid action this turn!", "danger")
+            return False
         if self.has_lighthouse:
             self.add_message("Lighthouse already built!", "warning")
             return False
@@ -260,6 +279,9 @@ class GameState:
         return True
 
     def build_watchtower(self):
+        if self.has_taken_paid_action:
+            self.add_message("❌ You've already taken your paid action this turn!", "danger")
+            return False
         if self.has_watchtower:
             self.add_message("Watchtower already built!", "warning")
             return False
@@ -278,6 +300,9 @@ class GameState:
 
     # Research actions
     def research_imperial_bureaucracy(self):
+        if self.has_taken_paid_action:
+            self.add_message("❌ You've already taken your paid action this turn!", "danger")
+            return False
         if self.has_imperial_bureaucracy:
             self.add_message("Already researched!", "warning")
             return False
@@ -295,6 +320,9 @@ class GameState:
         return True
 
     def research_tin_trade_routes(self):
+        if self.has_taken_paid_action:
+            self.add_message("❌ You've already taken your paid action this turn!", "danger")
+            return False
         if self.has_tin_trade_routes:
             self.add_message("Already researched!", "warning")
             return False
@@ -312,6 +340,9 @@ class GameState:
         return True
 
     def research_phalanx_formation(self):
+        if self.has_taken_paid_action:
+            self.add_message("❌ You've already taken your paid action this turn!", "danger")
+            return False
         if self.has_phalanx_formation:
             self.add_message("Already researched!", "warning")
             return False
@@ -329,6 +360,9 @@ class GameState:
         return True
 
     def research_diplomatic_marriage(self):
+        if self.has_taken_paid_action:
+            self.add_message("❌ You've already taken your paid action this turn!", "danger")
+            return False
         if self.has_diplomatic_marriage:
             self.add_message("Already researched!", "warning")
             return False
@@ -346,6 +380,9 @@ class GameState:
 
     # Diplomacy actions
     def send_tribute(self):
+        if self.has_taken_paid_action:
+            self.add_message("❌ You've already taken your paid action this turn!", "danger")
+            return False
         if self.grain < 15 or self.bronze < 10:
             self.add_message("Insufficient resources! Need 15 Grain, 10 Bronze.", "danger")
             return False
@@ -361,6 +398,9 @@ class GameState:
         return True
 
     def form_alliance(self):
+        if self.has_taken_paid_action:
+            self.add_message("❌ You've already taken your paid action this turn!", "danger")
+            return False
         if self.prestige < 15:
             self.add_message("Insufficient Prestige! Need 15 Prestige.", "danger")
             return False
@@ -375,6 +415,9 @@ class GameState:
         return True
 
     def host_festival(self):
+        if self.has_taken_paid_action:
+            self.add_message("❌ You've already taken your paid action this turn!", "danger")
+            return False
         if self.grain < 20:
             self.add_message("Insufficient Grain! Need 20 Grain.", "danger")
             return False
@@ -390,6 +433,9 @@ class GameState:
 
     # Withdraw action
     def withdraw_from_alliance(self):
+        if self.has_taken_paid_action:
+            self.add_message("❌ You've already taken your paid action this turn!", "danger")
+            return False
         if self.stability < 45:
             self.add_message("Cannot withdraw! Stability too low (need ≥45).", "danger")
             return False

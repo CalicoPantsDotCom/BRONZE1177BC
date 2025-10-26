@@ -1,23 +1,84 @@
 {% extends "base.html" %}
 
 {% block content %}
-<!-- Sticky Resource Bar -->
-<div class="sticky-resources">
-    <div class="resource-item">
-        <span class="resource-label">🌾 Grain:</span>
-        <span class="resource-value">{{ game.grain }}</span>
+<!-- Sticky Resource & Metrics Bar -->
+<div class="sticky-bar">
+    <!-- Top Row: Resources -->
+    <div class="sticky-resources">
+        <div class="resource-item">
+            <span class="resource-label">🌾 Grain:</span>
+            <span class="resource-value">{{ game.grain }}</span>
+        </div>
+        <div class="resource-item">
+            <span class="resource-label">🪵 Timber:</span>
+            <span class="resource-value">{{ game.timber }}</span>
+        </div>
+        <div class="resource-item">
+            <span class="resource-label">⚒️ Bronze:</span>
+            <span class="resource-value">{{ game.bronze }}</span>
+        </div>
+        <div class="resource-item turn-counter">
+            <span class="resource-label">Turn:</span>
+            <span class="resource-value">{{ game.turn }}/{{ game.max_turns }}</span>
+        </div>
     </div>
-    <div class="resource-item">
-        <span class="resource-label">🪵 Timber:</span>
-        <span class="resource-value">{{ game.timber }}</span>
-    </div>
-    <div class="resource-item">
-        <span class="resource-label">⚒️ Bronze:</span>
-        <span class="resource-value">{{ game.bronze }}</span>
-    </div>
-    <div class="resource-item turn-counter">
-        <span class="resource-label">Turn:</span>
-        <span class="resource-value">{{ game.turn }}/{{ game.max_turns }}</span>
+
+    <!-- Bottom Row: Metrics with Bars -->
+    <div class="sticky-metrics">
+        <!-- Military -->
+        <div class="metric-item">
+            <div class="metric-header">
+                <span class="metric-label">⚔️ Military</span>
+                <span class="metric-value">{{ game.military }}</span>
+            </div>
+            <div class="metric-bar-container">
+                <div class="metric-bar metric-military" style="width: {{ game.military }}%;">
+                    <div class="threshold-line" style="left: 20%;"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Stability -->
+        <div class="metric-item">
+            <div class="metric-header">
+                <span class="metric-label">🏛️ Stability</span>
+                <span class="metric-value">{{ game.stability }}</span>
+            </div>
+            <div class="metric-bar-container">
+                <div class="metric-bar metric-stability" style="width: {{ game.stability }}%;">
+                    <div class="threshold-line warning" style="left: 30%;"></div>
+                    <div class="threshold-line danger" style="left: 15%;"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Prestige -->
+        <div class="metric-item">
+            <div class="metric-header">
+                <span class="metric-label">👑 Prestige</span>
+                <span class="metric-value">{{ game.prestige }}</span>
+            </div>
+            <div class="metric-bar-container">
+                <div class="metric-bar metric-prestige" style="width: {{ game.prestige }}%;">
+                    <div class="threshold-line" style="left: 50%;"></div>
+                    <div class="threshold-line good" style="left: 70%;"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Collapse -->
+        <div class="metric-item">
+            <div class="metric-header">
+                <span class="metric-label">💀 Collapse</span>
+                <span class="metric-value">{{ game.collapse }}</span>
+            </div>
+            <div class="metric-bar-container">
+                <div class="metric-bar metric-collapse" style="width: {{ game.collapse }}%;">
+                    <div class="threshold-line warning" style="left: 70%;"></div>
+                    <div class="threshold-line danger" style="left: 85%;"></div>
+                </div>
+            </div>
+        </div>
     </div>
 </div>
 
