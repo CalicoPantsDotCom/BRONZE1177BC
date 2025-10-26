@@ -1,28 +1,28 @@
 /* BRONZE: 1177 BC - v2.1 Dark Theme (mobile-first, accessible) */
 
 :root {
-  /* Dark theme colors - HIGH CONTRAST (WCAG AA compliant) */
+  /* Dark theme colors - MAXIMUM CONTRAST (WCAG AAA compliant) */
   --bg: #0e0f13;
-  --panel: #161821;
-  --panel-2: #1c1f2b;
-  --text: #f0f2f7;          /* Brighter for better contrast */
-  --muted: #b5bac9;         /* Brighter muted text */
-  --border: #3a4052;        /* More visible borders */
-  --accent: #ffd93d;        /* Brighter gold (WCAG AA) */
-  --warn: #ff6b6b;          /* Brighter red */
-  --ok: #51cf66;            /* Brighter green (WCAG AA) */
-  --info: #74b9ff;          /* Brighter blue */
-  --collapse: #ff6b9d;      /* Brighter pink */
+  --panel: #1a1d28;         /* Slightly lighter for better contrast */
+  --panel-2: #242938;       /* Even lighter for depth */
+  --text: #ffffff;          /* Pure white for maximum readability */
+  --muted: #d0d5e0;         /* Much brighter muted text */
+  --border: #4a5570;        /* Much more visible borders */
+  --accent: #ffeb3b;        /* Very bright yellow (almost neon) */
+  --warn: #ff8787;          /* Brighter red */
+  --ok: #69db7c;            /* Much brighter green (WCAG AAA) */
+  --info: #91d5ff;          /* Much brighter blue */
+  --collapse: #ff85b3;      /* Brighter pink */
 
-  /* Resource colors - HIGHER CONTRAST */
-  --grain: #ffe066;
-  --bronze: #d4934d;
-  --timber: #5dd65d;
+  /* Resource colors - MAXIMUM CONTRAST */
+  --grain: #ffed88;         /* Bright yellow */
+  --bronze: #f0a868;        /* Bright orange-gold */
+  --timber: #7ae582;        /* Bright green */
 
-  /* Metric colors - HIGHER CONTRAST */
-  --stability-color: #51cf66;
-  --military-color: #ffb366;
-  --prestige-color: #a78bfa;
+  /* Metric colors - MAXIMUM CONTRAST */
+  --stability-color: #69db7c;  /* Bright green */
+  --military-color: #ffc078;   /* Bright orange */
+  --prestige-color: #b794f6;   /* Bright purple */
 
   /* Layout */
   --radius: 14px;
@@ -31,7 +31,7 @@
   --font: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Inter, "Helvetica Neue", Arial;
 
   /* Focus ring for accessibility */
-  --focus-ring: 0 0 0 3px rgba(255, 217, 61, 0.5);
+  --focus-ring: 0 0 0 3px rgba(255, 235, 59, 0.6);  /* Brighter yellow focus */
 }
 
 @media (prefers-color-scheme: light) {
@@ -149,26 +149,26 @@ body {
 }
 
 .alert-info {
-  background: rgba(102, 179, 255, 0.12);
-  border-color: rgba(102, 179, 255, 0.35);
+  background: rgba(145, 213, 255, 0.15);  /* Brighter blue tint */
+  border-color: rgba(145, 213, 255, 0.5); /* More visible border */
   color: var(--info);
 }
 
 .alert-success {
-  background: rgba(106, 209, 139, 0.12);
-  border-color: rgba(106, 209, 139, 0.35);
+  background: rgba(105, 219, 124, 0.15);  /* Brighter green tint */
+  border-color: rgba(105, 219, 124, 0.5); /* More visible border */
   color: var(--ok);
 }
 
 .alert-warning {
-  background: rgba(226, 183, 20, 0.12);
-  border-color: rgba(226, 183, 20, 0.35);
+  background: rgba(255, 235, 59, 0.15);   /* Brighter yellow tint */
+  border-color: rgba(255, 235, 59, 0.5);  /* More visible border */
   color: var(--accent);
 }
 
 .alert-danger {
-  background: rgba(230, 106, 106, 0.12);
-  border-color: rgba(230, 106, 106, 0.35);
+  background: rgba(255, 135, 135, 0.15);  /* Brighter red tint */
+  border-color: rgba(255, 135, 135, 0.5); /* More visible border */
   color: var(--warn);
 }
 
@@ -229,19 +229,19 @@ body {
 }
 
 .progress-bar.bg-success {
-  background: linear-gradient(90deg, var(--ok), #3abf7d);
+  background: linear-gradient(90deg, var(--ok), #51cf66);  /* Bright green gradient */
 }
 
 .progress-bar.bg-info {
-  background: linear-gradient(90deg, var(--info), #4493ff);
+  background: linear-gradient(90deg, var(--info), #74b9ff);  /* Bright blue gradient */
 }
 
 .progress-bar.bg-warning {
-  background: linear-gradient(90deg, var(--accent), #d4a512);
+  background: linear-gradient(90deg, var(--accent), #ffd93d);  /* Bright yellow gradient */
 }
 
 .progress-bar.bg-danger {
-  background: linear-gradient(90deg, var(--warn), #ff345e);
+  background: linear-gradient(90deg, var(--warn), #ff6b6b);  /* Bright red gradient */
 }
 
 /* Buttons */
@@ -267,7 +267,7 @@ body {
 
 .btn:hover:not(:disabled) {
   transform: translateY(-1px);
-  background: #232536;
+  background: #2d3348;  /* Lighter for better visibility */
 }
 
 .btn:focus {
@@ -291,26 +291,30 @@ body {
 
 .btn-primary {
   background: var(--accent);
-  color: #17181f;
+  color: #0a0b0e;          /* Darker text for contrast on bright bg */
   border-color: transparent;
+  font-weight: 700;
 }
 
 .btn-success {
   background: var(--ok);
-  color: #17181f;
+  color: #0a0b0e;          /* Darker text for contrast on bright bg */
   border-color: transparent;
+  font-weight: 700;
 }
 
 .btn-warning {
   background: var(--accent);
-  color: #17181f;
+  color: #0a0b0e;          /* Darker text for contrast on bright bg */
   border-color: transparent;
+  font-weight: 700;
 }
 
 .btn-danger {
   background: var(--warn);
-  color: white;
+  color: #0a0b0e;          /* Darker text for contrast on bright bg */
   border-color: transparent;
+  font-weight: 700;
 }
 
 .btn-outline-primary {
@@ -378,16 +382,18 @@ body {
 
 .bg-warning {
   background: var(--accent);
-  color: #17181f;
+  color: #0a0b0e;          /* Darker text for contrast */
+  font-weight: 700;
 }
 
 .bg-secondary {
   background: var(--muted);
-  color: #17181f;
+  color: #0a0b0e;          /* Darker text for contrast */
+  font-weight: 700;
 }
 
 .text-dark {
-  color: #17181f;
+  color: #0a0b0e;
 }
 
 /* Grid Layout - FIXED for narrow viewports */
@@ -574,11 +580,11 @@ footer small {
 .border-primary { border-color: var(--accent) !important; }
 
 /* Card header backgrounds */
-.card-header.bg-warning { background: rgba(226, 183, 20, 0.15); border-color: var(--accent); color: var(--text); }
-.card-header.bg-info { background: rgba(102, 179, 255, 0.15); border-color: var(--info); color: var(--text); }
-.card-header.bg-danger { background: rgba(230, 106, 106, 0.15); border-color: var(--warn); color: var(--text); }
-.card-header.bg-success { background: rgba(106, 209, 139, 0.15); border-color: var(--ok); color: var(--text); }
-.card-header.bg-primary { background: rgba(226, 183, 20, 0.15); border-color: var(--accent); color: var(--text); }
+.card-header.bg-warning { background: rgba(255, 235, 59, 0.18); border-color: var(--accent); color: var(--text); }
+.card-header.bg-info { background: rgba(145, 213, 255, 0.18); border-color: var(--info); color: var(--text); }
+.card-header.bg-danger { background: rgba(255, 135, 135, 0.18); border-color: var(--warn); color: var(--text); }
+.card-header.bg-success { background: rgba(105, 219, 124, 0.18); border-color: var(--ok); color: var(--text); }
+.card-header.bg-primary { background: rgba(255, 235, 59, 0.18); border-color: var(--accent); color: var(--text); }
 
 /* Responsive text */
 @media (max-width: 768px) {
