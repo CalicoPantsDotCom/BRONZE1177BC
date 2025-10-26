@@ -47,6 +47,10 @@ class GameState:
         self.previous_turn_summary = None  # Summary of last turn
         self.turn_history = []  # Full history of all turns
 
+        # Turn action tracking (v2.3)
+        self.has_used_free_harvest = False  # One free harvest per turn
+        self.has_taken_paid_action = False  # One paid action required per turn
+
     def to_dict(self):
         """Serialize game state for session storage"""
         return {
@@ -75,7 +79,9 @@ class GameState:
             'message_log': self.message_log,
             'current_turn_actions': self.current_turn_actions,
             'previous_turn_summary': self.previous_turn_summary,
-            'turn_history': self.turn_history
+            'turn_history': self.turn_history,
+            'has_used_free_harvest': self.has_used_free_harvest,
+            'has_taken_paid_action': self.has_taken_paid_action
         }
 
     @classmethod
@@ -102,33 +108,67 @@ class GameState:
             'effects': effects
         })
 
+    def check_and_auto_end_turn(self):
+        """Check if turn should auto-end (both free harvest and paid action taken)"""
+        if self.has_used_free_harvest and self.has_taken_paid_action:
+            self.add_message("✓ Turn complete! Processing end-of-turn...", "info")
+            self.end_turn()
+            return True
+        return False
+
     # Actions
     def harvest(self):
-        """Action: Harvest (+15 Grain, +10 Bronze) - FREE ACTION"""
+        """Action: Harvest (+15 Grain, +10 Bronze) - First one FREE, second costs turn"""
         self.grain += 15
         self.bronze += 10
-        self.log_action("Harvest", "+15 Grain, +10 Bronze")
-        self.add_message("Harvested: +15 Grain, +10 Bronze (FREE - doesn't end turn)", "success")
-        return True  # Success but doesn't advance turn
+
+        if not self.has_used_free_harvest:
+            # First harvest is FREE
+            self.has_used_free_harvest = True
+            self.log_action("Harvest (FREE)", "+15 Grain, +10 Bronze")
+            self.add_message("✓ Harvested: +15 Grain, +10 Bronze (FREE)", "success")
+            # Don't auto-end, need paid action too
+            return True
+        else:
+            # Second harvest costs the paid action
+            self.has_taken_paid_action = True
+            self.log_action("Harvest", "+15 Grain, +10 Bronze (paid action)")
+            self.add_message("✓ Harvested: +15 Grain, +10 Bronze (used paid action)", "success")
+            self.check_and_auto_end_turn()
+            return True
 
     def gather_timber(self):
-        """Action: Gather Timber (-8 Grain → +10 Timber)"""
+        """Action: Gather Timber (-8 Grain → +10 Timber) - First one FREE, second costs turn"""
         if self.grain < 8:
             self.add_message("Insufficient Grain! Need 8 Grain.", "danger")
             return False
 
         self.grain -= 8
         self.timber += 10
-        self.log_action("Gather Timber", "-8 Grain, +10 Timber")
-        self.add_message("Gathered Timber: -8 Grain, +10 Timber", "success")
-        return True
+
+        if not self.has_used_free_harvest:
+            # First gather is FREE
+            self.has_used_free_harvest = True
+            self.log_action("Gather Timber (FREE)", "-8 Grain, +10 Timber")
+            self.add_message("✓ Gathered Timber: -8 Grain, +10 Timber (FREE)", "success")
+            # Don't auto-end, need paid action too
+            return True
+        else:
+            # Second gather costs the paid action
+            self.has_taken_paid_action = True
+            self.log_action("Gather Timber", "-8 Grain, +10 Timber (paid action)")
+            self.add_message("✓ Gathered Timber: -8 Grain, +10 Timber (used paid action)", "success")
+            self.check_and_auto_end_turn()
+            return True
 
     def fortify(self):
-        """Action: Fortify (+5 Military, -5 Stability)"""
+        """Action: Fortify (+5 Military, -5 Stability) - PAID ACTION"""
         self.military += 5
         self.stability -= 5
+        self.has_taken_paid_action = True
         self.log_action("Fortify", "+5 Military, -5 Stability")
-        self.add_message("Fortified: +5 Military, -5 Stability", "success")
+        self.add_message("✓ Fortified: +5 Military, -5 Stability", "success")
+        self.check_and_auto_end_turn()
         return True
 
     # Building actions
@@ -143,8 +183,10 @@ class GameState:
         self.grain -= 15
         self.timber -= 10
         self.has_bronze_mine = True
+        self.has_taken_paid_action = True
         self.log_action("Build Bronze Mine", "-15 Grain, -10 Timber | +2 Bronze/turn")
-        self.add_message("Bronze Mine built! +2 Bronze per turn.", "success")
+        self.add_message("✓ Bronze Mine built! +2 Bronze per turn.", "success")
+        self.check_and_auto_end_turn()
         return True
 
     def build_granary(self):
@@ -158,8 +200,10 @@ class GameState:
         self.grain -= 20
         self.timber -= 15
         self.has_granary = True
+        self.has_taken_paid_action = True
         self.log_action("Build Granary", "-20 Grain, -15 Timber | +3 Grain/turn")
-        self.add_message("Granary built! +3 Grain per turn.", "success")
+        self.add_message("✓ Granary built! +3 Grain per turn.", "success")
+        self.check_and_auto_end_turn()
         return True
 
     def build_barracks(self):
@@ -174,8 +218,10 @@ class GameState:
         self.timber -= 20
         self.bronze -= 10
         self.has_barracks = True
+        self.has_taken_paid_action = True
         self.log_action("Build Barracks", "-25 Grain, -20 Timber, -10 Bronze | +2 Military/turn")
-        self.add_message("Barracks built! +2 Military per turn.", "success")
+        self.add_message("✓ Barracks built! +2 Military per turn.", "success")
+        self.check_and_auto_end_turn()
         return True
 
     def build_palace(self):
@@ -190,8 +236,10 @@ class GameState:
         self.timber -= 25
         self.bronze -= 15
         self.has_palace = True
+        self.has_taken_paid_action = True
         self.log_action("Build Palace", "-30 Grain, -25 Timber, -15 Bronze | +3 Prestige/turn")
-        self.add_message("Palace built! +3 Prestige per turn.", "success")
+        self.add_message("✓ Palace built! +3 Prestige per turn.", "success")
+        self.check_and_auto_end_turn()
         return True
 
     def build_lighthouse(self):
@@ -205,8 +253,10 @@ class GameState:
         self.grain -= 20
         self.timber -= 20
         self.has_lighthouse = True
+        self.has_taken_paid_action = True
         self.log_action("Build Lighthouse", "-20 Grain, -20 Timber | +2 Prestige/turn, -1 Collapse/turn")
-        self.add_message("Lighthouse built! +2 Prestige per turn, -1 Collapse per turn.", "success")
+        self.add_message("✓ Lighthouse built! +2 Prestige per turn, -1 Collapse per turn.", "success")
+        self.check_and_auto_end_turn()
         return True
 
     def build_watchtower(self):
@@ -220,8 +270,10 @@ class GameState:
         self.grain -= 15
         self.timber -= 15
         self.has_watchtower = True
+        self.has_taken_paid_action = True
         self.log_action("Build Watchtower", "-15 Grain, -15 Timber | +1 Military/turn")
-        self.add_message("Watchtower built! +1 Military per turn.", "success")
+        self.add_message("✓ Watchtower built! +1 Military per turn.", "success")
+        self.check_and_auto_end_turn()
         return True
 
     # Research actions
@@ -236,8 +288,10 @@ class GameState:
         self.grain -= 20
         self.prestige -= 20
         self.has_imperial_bureaucracy = True
+        self.has_taken_paid_action = True
         self.log_action("Research Imperial Bureaucracy", "-20 Grain, -20 Prestige | Reduces stability drift")
-        self.add_message("Imperial Bureaucracy researched! Stability drift reduced.", "success")
+        self.add_message("✓ Imperial Bureaucracy researched! Stability drift reduced.", "success")
+        self.check_and_auto_end_turn()
         return True
 
     def research_tin_trade_routes(self):
@@ -251,8 +305,10 @@ class GameState:
         self.grain -= 25
         self.bronze -= 15
         self.has_tin_trade_routes = True
+        self.has_taken_paid_action = True
         self.log_action("Research Tin Trade Routes", "-25 Grain, -15 Bronze | +1 Bronze/turn")
-        self.add_message("Tin Trade Routes researched! +1 Bronze per turn.", "success")
+        self.add_message("✓ Tin Trade Routes researched! +1 Bronze per turn.", "success")
+        self.check_and_auto_end_turn()
         return True
 
     def research_phalanx_formation(self):
@@ -266,8 +322,10 @@ class GameState:
         self.bronze -= 20
         self.military -= 25
         self.has_phalanx_formation = True
+        self.has_taken_paid_action = True
         self.log_action("Research Phalanx Formation", "-20 Bronze, -25 Military | +2 Military/turn")
-        self.add_message("Phalanx Formation researched! +2 Military per turn.", "success")
+        self.add_message("✓ Phalanx Formation researched! +2 Military per turn.", "success")
+        self.check_and_auto_end_turn()
         return True
 
     def research_diplomatic_marriage(self):
@@ -280,8 +338,10 @@ class GameState:
 
         self.prestige -= 30
         self.has_diplomatic_marriage = True
+        self.has_taken_paid_action = True
         self.log_action("Research Diplomatic Marriage", "-30 Prestige | +1 Prestige/turn, -1 Collapse/turn")
-        self.add_message("Diplomatic Marriage researched! +1 Prestige per turn, -1 Collapse per turn.", "success")
+        self.add_message("✓ Diplomatic Marriage researched! +1 Prestige per turn, -1 Collapse per turn.", "success")
+        self.check_and_auto_end_turn()
         return True
 
     # Diplomacy actions
@@ -294,8 +354,10 @@ class GameState:
         self.bronze -= 10
         self.prestige += 5
         self.collapse -= 3
+        self.has_taken_paid_action = True
         self.log_action("Send Tribute", "-15 Grain, -10 Bronze | +5 Prestige, -3 Collapse")
-        self.add_message("Tribute sent: +5 Prestige, -3 Collapse", "success")
+        self.add_message("✓ Tribute sent: +5 Prestige, -3 Collapse", "success")
+        self.check_and_auto_end_turn()
         return True
 
     def form_alliance(self):
@@ -306,8 +368,10 @@ class GameState:
         self.prestige -= 15
         self.military += 5
         self.collapse -= 2
+        self.has_taken_paid_action = True
         self.log_action("Form Alliance", "-15 Prestige | +5 Military, -2 Collapse")
-        self.add_message("Alliance formed: +5 Military, -2 Collapse", "success")
+        self.add_message("✓ Alliance formed: +5 Military, -2 Collapse", "success")
+        self.check_and_auto_end_turn()
         return True
 
     def host_festival(self):
@@ -318,8 +382,10 @@ class GameState:
         self.grain -= 20
         self.stability += 10
         self.prestige += 3
+        self.has_taken_paid_action = True
         self.log_action("Host Festival", "-20 Grain | +10 Stability, +3 Prestige")
-        self.add_message("Festival hosted: +10 Stability, +3 Prestige", "success")
+        self.add_message("✓ Festival hosted: +10 Stability, +3 Prestige", "success")
+        self.check_and_auto_end_turn()
         return True
 
     # Withdraw action
@@ -332,8 +398,10 @@ class GameState:
         self.stability -= 15
         self.prestige -= 10
         self.collapse += 5
+        self.has_taken_paid_action = True
         self.log_action("Withdraw from Alliance", "+10 Military, -15 Stability, -10 Prestige, +5 Collapse")
-        self.add_message("Withdrew from alliance: +10 Military, -15 Stability, -10 Prestige, +5 Collapse", "warning")
+        self.add_message("✓ Withdrew from alliance: +10 Military, -15 Stability, -10 Prestige, +5 Collapse", "warning")
+        self.check_and_auto_end_turn()
         return True
 
     # End-of-turn logic
@@ -408,6 +476,11 @@ class GameState:
         self.previous_turn_summary = summary
         self.turn_history.append(summary)
         self.current_turn_actions = []  # Clear for next turn
+
+        # Reset turn action tracking (v2.3)
+        self.has_used_free_harvest = False
+        self.has_taken_paid_action = False
+
         self.turn += 1
 
         # Check win/loss conditions

@@ -1,6 +1,26 @@
 {% extends "base.html" %}
 
 {% block content %}
+<!-- Sticky Resource Bar -->
+<div class="sticky-resources">
+    <div class="resource-item">
+        <span class="resource-label">🌾 Grain:</span>
+        <span class="resource-value">{{ game.grain }}</span>
+    </div>
+    <div class="resource-item">
+        <span class="resource-label">🪵 Timber:</span>
+        <span class="resource-value">{{ game.timber }}</span>
+    </div>
+    <div class="resource-item">
+        <span class="resource-label">⚒️ Bronze:</span>
+        <span class="resource-value">{{ game.bronze }}</span>
+    </div>
+    <div class="resource-item turn-counter">
+        <span class="resource-label">Turn:</span>
+        <span class="resource-value">{{ game.turn }}/{{ game.max_turns }}</span>
+    </div>
+</div>
+
 <div class="row">
     <!-- Game Status -->
     <div class="col-12 mb-3">
@@ -176,12 +196,22 @@
             <div class="card-body">
                 <form method="POST" action="{{ url_for('action', action_name='harvest') }}">
                     <button type="submit" class="btn btn-success btn-sm w-100 mb-2">
-                        🌾 Harvest (+15G, +10B) <span class="badge bg-warning text-dark">FREE</span>
+                        🌾 Harvest (+15G, +10B)
+                        {% if not game.has_used_free_harvest %}
+                        <span class="badge bg-warning text-dark">FREE</span>
+                        {% else %}
+                        <span class="badge bg-danger">Ends Turn</span>
+                        {% endif %}
                     </button>
                 </form>
                 <form method="POST" action="{{ url_for('action', action_name='gather_timber') }}">
                     <button type="submit" class="btn btn-outline-success btn-sm w-100 mb-2">
                         🪵 Gather Timber (-8G → +10T)
+                        {% if not game.has_used_free_harvest %}
+                        <span class="badge bg-warning text-dark">FREE</span>
+                        {% else %}
+                        <span class="badge bg-danger">Ends Turn</span>
+                        {% endif %}
                     </button>
                 </form>
                 <form method="POST" action="{{ url_for('action', action_name='fortify') }}">
@@ -290,17 +320,18 @@
     </div>
 </div>
 
-<!-- END TURN BUTTON -->
+<!-- Turn Info (Auto-ends when free harvest + paid action taken) -->
 <div class="row mt-4">
     <div class="col-12">
-        <form method="POST" action="{{ url_for('end_turn_route') }}">
-            <button type="submit" class="btn btn-warning btn-lg w-100 py-3">
-                ⏭️ <strong>END TURN {{ game.turn }}</strong> (Process Events & Advance)
-            </button>
-        </form>
-        <p class="text-center text-muted mt-2 mb-0">
-            <small>All end-of-turn income, events, and drift will be applied</small>
-        </p>
+        <div class="alert alert-info text-center">
+            {% if not game.has_used_free_harvest and not game.has_taken_paid_action %}
+                <strong>⏳ Turn {{ game.turn }}:</strong> Take ONE free harvest/timber, then ONE paid action
+            {% elif game.has_used_free_harvest and not game.has_taken_paid_action %}
+                <strong>⏳ Turn {{ game.turn }}:</strong> Free harvest used! Now take your paid action
+            {% elif not game.has_used_free_harvest and game.has_taken_paid_action %}
+                <strong>⏳ Turn {{ game.turn }}:</strong> Paid action done! Take your free harvest to end turn
+            {% endif %}
+        </div>
     </div>
 </div>
 
@@ -312,8 +343,8 @@
                 <small class="text-muted">
                     <strong>Legend:</strong>
                     G=Grain | T=Timber | B=Bronze | M=Military | S=Stability | P=Prestige |
-                    ✅=Built | <strong class="text-success">Harvest is FREE</strong> (doesn't end turn) |
-                    <strong class="text-warning">All other actions</strong> can be taken in same turn
+                    ✅=Built | <strong class="text-success">ONE FREE harvest/timber per turn</strong> |
+                    <strong class="text-warning">ONE paid action per turn</strong> | Turn auto-ends after BOTH
                 </small>
             </div>
         </div>
