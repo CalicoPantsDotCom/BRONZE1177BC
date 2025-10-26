@@ -5,8 +5,8 @@
   --bg: #2b2d31;            /* Discord-style lighter dark gray */
   --panel: #383a40;         /* Lighter panels for cards */
   --panel-2: #404249;       /* Even lighter for depth */
-  --text: #f2f3f5;          /* Soft white (not pure white - easier on eyes) */
-  --muted: #b5bac1;         /* Light gray for secondary text */
+  --text: #ffffff;          /* Pure white - easy to read! */
+  --muted: #e3e5e8;         /* Very light gray (almost white) */
   --border: #4e5058;        /* Visible but subtle borders */
 
   /* Vibrant accent colors (not neon, just vibrant) */
