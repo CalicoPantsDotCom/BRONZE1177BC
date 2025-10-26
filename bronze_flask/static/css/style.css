@@ -1,4 +1,4 @@
-/* BRONZE: 1177 BC - v2.2 Lighter Dark Theme (Discord/Slack style) */
+/* BRONZE: 1177 BC - v2.5 MAXIMUM Brightness (All Text Brightened) */
 
 :root {
   /* Lighter dark mode - MAXIMUM VISIBILITY */
@@ -144,25 +144,25 @@ body {
 .alert-info {
   background: rgba(88, 101, 242, 0.1);
   border-color: rgba(88, 101, 242, 0.3);
-  color: #7078f5;
+  color: var(--info);  /* Brighter blue #7289ff */
 }
 
 .alert-success {
   background: rgba(35, 165, 90, 0.1);
   border-color: rgba(35, 165, 90, 0.3);
-  color: #2fb866;
+  color: var(--ok);  /* Brighter green #3dd46f */
 }
 
 .alert-warning {
   background: rgba(250, 166, 26, 0.1);
   border-color: rgba(250, 166, 26, 0.3);
-  color: #ffb732;
+  color: var(--accent);  /* Brighter gold #ffb84d */
 }
 
 .alert-danger {
   background: rgba(242, 63, 67, 0.1);
   border-color: rgba(242, 63, 67, 0.3);
-  color: #ff5b5e;
+  color: var(--warn);  /* Brighter red #ff5c5c */
 }
 
 .alert .btn-close {
@@ -475,7 +475,7 @@ body {
 .turn-history ul {
   margin: 0 0 8px 0;
   padding-left: 20px;
-  color: var(--muted);
+  color: var(--text);  /* Pure white for maximum readability */
   line-height: 1.6;
 }
 
