@@ -1,39 +1,39 @@
-/* BRONZE: 1177 BC - v2.5 MAXIMUM Brightness (All Text Brightened) */
+/* BRONZE: 1177 BC - v3.0 DOS/TERMINAL THEME */
 
 :root {
-  /* ULTRA BRIGHT - Near light mode visibility */
-  --bg: #4a4d55;            /* Much lighter gray background */
-  --panel: #5a5d65;         /* Very light panels */
-  --panel-2: #6a6d75;       /* Even lighter for depth */
-  --text: #ffffff;          /* Pure white */
-  --muted: #f5f5f5;         /* Nearly white muted text */
-  --border: #8a8d95;        /* Very bright borders */
+  /* TERMINAL COLOR SCHEME - Classic Green on Black */
+  --bg: #000000;            /* Pure black background */
+  --panel: #001100;         /* Slightly green-tinted black */
+  --panel-2: #002200;       /* More green-tinted */
+  --text: #00ff00;          /* Classic terminal green */
+  --muted: #00cc00;         /* Dimmer green */
+  --border: #00ff00;        /* Green borders */
 
-  /* ULTRA BRIGHT accent colors */
-  --accent: #ffd666;        /* Very bright gold */
-  --warn: #ff6b6b;          /* Very bright red */
-  --ok: #51ff7d;            /* Neon green */
-  --info: #80a0ff;          /* Very bright blue */
+  /* Terminal accent colors */
+  --accent: #ffff00;        /* Yellow for warnings/highlights */
+  --warn: #ff0000;          /* Red for danger */
+  --ok: #00ff00;            /* Green for success */
+  --info: #00ffff;          /* Cyan for info */
 
-  /* Resource colors - NEON BRIGHTNESS */
-  --grain: #ffe66d;         /* Neon yellow */
-  --bronze: #ffb366;        /* Neon orange */
-  --timber: #7dff7d;        /* Neon green */
+  /* Resource colors - Terminal style */
+  --grain: #ffff00;         /* Yellow */
+  --bronze: #ff8800;        /* Orange */
+  --timber: #00ff00;        /* Green */
 
-  /* Metric colors - NEON BRIGHTNESS */
-  --stability-color: #51ff7d;   /* Neon green */
-  --military-color: #ff6b6b;    /* Neon red */
-  --prestige-color: #80a0ff;    /* Neon blue */
-  --collapse-color: #ff6b6b;    /* Neon red */
+  /* Metric colors - Terminal style */
+  --stability-color: #00ff00;   /* Green */
+  --military-color: #ff0000;    /* Red */
+  --prestige-color: #00ffff;    /* Cyan */
+  --collapse-color: #ff0000;    /* Red */
 
-  /* Layout */
-  --radius: 12px;
-  --gap: 12px;
-  --shadow: 0 2px 10px rgba(0,0,0,.2);
-  --font: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Inter, "Helvetica Neue", Arial;
+  /* Layout - Boxy, no curves */
+  --radius: 0px;            /* No rounded corners - boxy terminal style */
+  --gap: 8px;
+  --shadow: none;           /* No shadows in terminal */
+  --font: 'Courier New', Courier, monospace;  /* Monospace terminal font */
 
-  /* Focus ring */
-  --focus-ring: 0 0 0 3px rgba(250, 166, 26, 0.4);
+  /* Focus ring - terminal style */
+  --focus-ring: 0 0 0 2px #00ff00;
 }
 
 * {
@@ -89,12 +89,14 @@ body {
   color: var(--text);
   text-decoration: none;
   padding: 6px 12px;
-  border-radius: 8px;
-  transition: background 0.2s;
+  border-radius: var(--radius);  /* 0px */
+  transition: none;  /* No transitions */
 }
 
 .navbar a:hover {
   background: var(--panel);
+  border: 1px solid var(--border);
+  padding: 5px 11px;  /* Adjust for border */
 }
 
 /* Container */
@@ -104,65 +106,66 @@ body {
   padding: 16px 12px;
 }
 
-/* Panels / Cards */
+/* Panels / Cards - Terminal Style */
 .card {
   background: var(--panel);
-  border: 2px solid var(--border); /* Thicker border for visibility */
-  border-radius: var(--radius);
-  padding: 16px;
-  box-shadow: var(--shadow);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);  /* 0px - no curves */
+  padding: 12px;
+  box-shadow: var(--shadow);  /* none */
   margin-bottom: var(--gap);
-  min-width: 280px; /* Prevent skinny vertical pills */
-  overflow: hidden; /* Safari fix */
+  min-width: 280px;
+  overflow: hidden;
 }
 
 .card-header {
-  margin: -16px -16px 14px -16px;
-  padding: 12px 16px;
+  margin: -12px -12px 10px -12px;
+  padding: 8px 12px;
   background: var(--panel-2);
   border-bottom: 1px solid var(--border);
-  border-radius: var(--radius) var(--radius) 0 0;
-  font-weight: 600;
-  font-size: 1.05rem;
-  letter-spacing: 0.3px;
+  border-radius: var(--radius);  /* 0px */
+  font-weight: 700;
+  font-size: 1rem;
+  letter-spacing: 1px;
+  text-transform: uppercase;  /* DOS-style all caps headers */
 }
 
 .card-body {
   padding: 0;
 }
 
-/* Alerts */
+/* Alerts - Terminal Style */
 .alert {
-  padding: 12px 14px;
-  border-radius: 12px;
-  margin-bottom: 12px;
+  padding: 8px 12px;
+  border-radius: var(--radius);  /* 0px */
+  margin-bottom: 8px;
   border: 1px solid var(--border);
-  background: var(--panel-2);
-  animation: slideIn 0.3s ease-out;
+  background: var(--bg);
+  animation: none;  /* No animations in terminal */
 }
 
 .alert-info {
-  background: rgba(88, 101, 242, 0.1);
-  border-color: rgba(88, 101, 242, 0.3);
-  color: var(--info);  /* Brighter blue #7289ff */
+  background: var(--bg);
+  border-color: var(--info);
+  color: var(--info);
 }
 
 .alert-success {
-  background: rgba(35, 165, 90, 0.1);
-  border-color: rgba(35, 165, 90, 0.3);
-  color: var(--ok);  /* Brighter green #3dd46f */
+  background: var(--bg);
+  border-color: var(--ok);
+  color: var(--ok);
 }
 
 .alert-warning {
-  background: rgba(250, 166, 26, 0.1);
-  border-color: rgba(250, 166, 26, 0.3);
-  color: var(--accent);  /* Brighter gold #ffb84d */
+  background: var(--bg);
+  border-color: var(--accent);
+  color: var(--accent);
 }
 
 .alert-danger {
-  background: rgba(242, 63, 67, 0.1);
-  border-color: rgba(242, 63, 67, 0.3);
-  color: var(--warn);  /* Brighter red #ff5c5c */
+  background: var(--bg);
+  border-color: var(--warn);
+  color: var(--warn);
 }
 
 .alert .btn-close {
@@ -199,136 +202,137 @@ body {
   align-items: center;
 }
 
-/* Progress Bars */
+/* Progress Bars - Terminal Style */
 .progress {
   width: 100%;
-  height: 14px;
-  border-radius: 999px;
-  background: rgba(255, 255, 255, 0.06);
+  height: 16px;
+  border-radius: var(--radius);  /* 0px */
+  background: var(--bg);
   overflow: hidden;
   border: 1px solid var(--border);
-  margin-top: 6px;
+  margin-top: 4px;
 }
 
 .progress-bar {
   height: 100%;
-  border-radius: 999px;
-  transition: width 0.5s ease;
-  font-weight: 600;
-  font-size: 0.75rem;
+  border-radius: var(--radius);  /* 0px */
+  transition: none;  /* No transitions */
+  font-weight: 700;
+  font-size: 0.7rem;
   display: flex;
   align-items: center;
   justify-content: center;
 }
 
 .progress-bar.bg-success {
-  background: linear-gradient(90deg, #23a55a, #2fb866);
+  background: var(--ok);  /* Solid green */
+  color: var(--bg);
 }
 
 .progress-bar.bg-info {
-  background: linear-gradient(90deg, #5865f2, #7078f5);
+  background: var(--info);  /* Solid cyan */
+  color: var(--bg);
 }
 
 .progress-bar.bg-warning {
-  background: linear-gradient(90deg, #faa61a, #ffb732);
+  background: var(--accent);  /* Solid yellow */
+  color: var(--bg);
 }
 
 .progress-bar.bg-danger {
-  background: linear-gradient(90deg, #f23f43, #ff5b5e);
+  background: var(--warn);  /* Solid red */
+  color: var(--bg);
 }
 
-/* Buttons */
+/* Buttons - Terminal Style */
 .btn {
   appearance: none;
-  border: 2px solid var(--border); /* Thicker border */
-  background: var(--panel-2);
+  border: 1px solid var(--border);
+  background: var(--bg);
   color: var(--text);
-  padding: 12px 16px;
-  border-radius: 12px;
+  padding: 8px 12px;
+  border-radius: var(--radius);  /* 0px */
   cursor: pointer;
-  font-weight: 600;
-  letter-spacing: 0.2px;
-  transition: transform 0.05s ease, background 0.2s ease, box-shadow 0.2s ease;
-  min-height: 48px;
-  font-size: clamp(0.875rem, 2.5vw, 0.95rem); /* Responsive text */
+  font-weight: 700;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  transition: none;  /* No transitions in terminal */
+  min-height: 40px;
+  font-size: 0.85rem;
   display: inline-block;
   text-align: center;
   text-decoration: none;
-  white-space: normal; /* Allow text wrap */
+  white-space: normal;
   line-height: 1.4;
+  font-family: var(--font);
 }
 
 .btn:hover:not(:disabled) {
-  transform: translateY(-1px);
-  background: #4e5058;  /* Lighter on hover */
-  border-color: #5e6068;
+  background: var(--panel);  /* Subtle highlight */
+  border-color: var(--text);
 }
 
 .btn:focus {
-  outline: none;
-  box-shadow: var(--focus-ring); /* Visible focus ring */
+  outline: 1px dotted var(--text);  /* DOS-style dotted focus */
+  outline-offset: -2px;
 }
 
 .btn:focus-visible {
-  outline: none;
-  box-shadow: var(--focus-ring);
+  outline: 1px dotted var(--text);
+  outline-offset: -2px;
 }
 
 .btn:active {
-  transform: scale(0.98);
+  background: var(--panel-2);
 }
 
 .btn:disabled {
-  opacity: 0.45;
+  opacity: 0.3;
   cursor: not-allowed;
 }
 
 .btn-primary {
-  background: var(--accent);
-  color: #1e1f22;          /* Dark text on bright button */
-  border-color: transparent;
-  font-weight: 600;
+  background: var(--bg);
+  color: var(--accent);
+  border-color: var(--accent);
 }
 
 .btn-primary:hover:not(:disabled) {
-  background: #ffb732;     /* Brighter on hover */
-  transform: translateY(-1px);
+  background: var(--panel);
+  border-color: var(--accent);
 }
 
 .btn-success {
-  background: var(--ok);
-  color: white;
-  border-color: transparent;
-  font-weight: 600;
+  background: var(--bg);
+  color: var(--ok);
+  border-color: var(--ok);
 }
 
 .btn-success:hover:not(:disabled) {
-  background: #2fb866;     /* Brighter on hover */
-  transform: translateY(-1px);
+  background: var(--panel);
+  border-color: var(--ok);
 }
 
 .btn-warning {
-  background: var(--accent);
-  color: #1e1f22;          /* Dark text on bright button */
-  border-color: transparent;
-  font-weight: 600;
+  background: var(--bg);
+  color: var(--accent);
+  border-color: var(--accent);
 }
 
 .btn-warning:hover:not(:disabled) {
-  background: #ffb732;     /* Brighter on hover */
-  transform: translateY(-1px);
+  background: var(--panel);
+  border-color: var(--accent);
 }
 
 .btn-danger {
-  background: var(--warn);
-  color: white;
-  border-color: transparent;
-  font-weight: 600;
+  background: var(--bg);
+  color: var(--warn);
+  border-color: var(--warn);
 }
 
 .btn-danger:hover:not(:disabled) {
-  background: #ff5b5e;     /* Brighter on hover */
-  transform: translateY(-1px);
+  background: var(--panel);
+  border-color: var(--warn);
 }
 
 .btn-outline-primary {
@@ -382,32 +386,34 @@ body {
 .btn .badge {
   margin-left: 6px;
   padding: 2px 6px;
-  border-radius: 6px;
-  font-size: 0.75rem;
+  border-radius: var(--radius);  /* 0px */
+  font-size: 0.7rem;
   font-weight: 700;
+  border: 1px solid;
 }
 
 .badge {
-  padding: 3px 8px;
-  border-radius: 6px;
-  font-size: 0.8rem;
-  font-weight: 600;
+  padding: 2px 6px;
+  border-radius: var(--radius);  /* 0px */
+  font-size: 0.75rem;
+  font-weight: 700;
+  border: 1px solid;
 }
 
 .bg-warning {
-  background: var(--accent);
-  color: #1e1f22;
-  font-weight: 600;
+  background: var(--bg);
+  color: var(--accent);
+  border-color: var(--accent);
 }
 
 .bg-secondary {
-  background: var(--muted);
-  color: #1e1f22;
-  font-weight: 600;
+  background: var(--bg);
+  color: var(--muted);
+  border-color: var(--muted);
 }
 
 .text-dark {
-  color: #1e1f22;
+  color: var(--bg);
 }
 
 /* Grid Layout - FIXED for narrow viewports */
@@ -574,17 +580,8 @@ footer small {
   font-size: 0.85rem;
 }
 
-/* Animations */
-@keyframes slideIn {
-  from {
-    opacity: 0;
-    transform: translateY(-10px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
+/* Animations - Removed for terminal style */
+/* No animations in DOS/Terminal */
 
 /* Border colors for cards */
 .border-warning { border-color: var(--accent) !important; }
@@ -593,12 +590,12 @@ footer small {
 .border-success { border-color: var(--ok) !important; }
 .border-primary { border-color: var(--accent) !important; }
 
-/* Card header backgrounds */
-.card-header.bg-warning { background: rgba(250, 166, 26, 0.12); border-color: var(--accent); color: var(--text); }
-.card-header.bg-info { background: rgba(88, 101, 242, 0.12); border-color: var(--info); color: var(--text); }
-.card-header.bg-danger { background: rgba(242, 63, 67, 0.12); border-color: var(--warn); color: var(--text); }
-.card-header.bg-success { background: rgba(35, 165, 90, 0.12); border-color: var(--ok); color: var(--text); }
-.card-header.bg-primary { background: rgba(250, 166, 26, 0.12); border-color: var(--accent); color: var(--text); }
+/* Card header backgrounds - Terminal Style */
+.card-header.bg-warning { background: var(--panel-2); border-color: var(--accent); color: var(--accent); }
+.card-header.bg-info { background: var(--panel-2); border-color: var(--info); color: var(--info); }
+.card-header.bg-danger { background: var(--panel-2); border-color: var(--warn); color: var(--warn); }
+.card-header.bg-success { background: var(--panel-2); border-color: var(--ok); color: var(--ok); }
+.card-header.bg-primary { background: var(--panel-2); border-color: var(--accent); color: var(--accent); }
 
 /* Responsive text */
 @media (max-width: 768px) {
@@ -736,54 +733,55 @@ h6 {
 .metric-bar-container {
   position: relative;
   height: 12px;
-  background: rgba(0,0,0,.3);
-  border-radius: 6px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);  /* 0px */
   overflow: visible;
 }
 
 .metric-bar {
   position: relative;
   height: 100%;
-  border-radius: 6px;
-  transition: width 0.4s ease;
+  border-radius: var(--radius);  /* 0px */
+  transition: none;  /* No transitions in terminal */
 }
 
 .metric-military {
-  background: linear-gradient(90deg, var(--military-color), #ff8080);
+  background: var(--military-color);  /* Solid red */
 }
 
 .metric-stability {
-  background: linear-gradient(90deg, var(--stability-color), #5fe587);
+  background: var(--stability-color);  /* Solid green */
 }
 
 .metric-prestige {
-  background: linear-gradient(90deg, var(--prestige-color), #95a5ff);
+  background: var(--prestige-color);  /* Solid cyan */
 }
 
 .metric-collapse {
-  background: linear-gradient(90deg, var(--collapse-color), #ff8080);
+  background: var(--collapse-color);  /* Solid red */
 }
 
-/* Threshold Lines */
+/* Threshold Lines - Terminal Style */
 .threshold-line {
   position: absolute;
-  top: -2px;
-  bottom: -2px;
-  width: 2px;
-  background: rgba(255,255,255,.6);
+  top: -1px;
+  bottom: -1px;
+  width: 1px;
+  background: var(--text);  /* Green line */
   z-index: 1;
 }
 
 .threshold-line.warning {
-  background: rgba(255,200,80,.8);
+  background: var(--accent);  /* Yellow */
 }
 
 .threshold-line.danger {
-  background: rgba(255,80,80,.9);
+  background: var(--warn);  /* Red */
 }
 
 .threshold-line.good {
-  background: rgba(80,255,150,.8);
+  background: var(--ok);  /* Green */
 }
 
 /* Mobile Responsive */
@@ -869,18 +867,20 @@ h6 {
   .sidebar-toggle {
     display: block;
     background: var(--panel-2);
-    padding: 12px;
-    border-radius: var(--radius);
+    padding: 8px;
+    border-radius: var(--radius);  /* 0px */
     text-align: center;
-    font-weight: 600;
+    font-weight: 700;
     cursor: pointer;
-    border: 2px solid var(--border);
-    margin-bottom: 12px;
+    border: 1px solid var(--border);
+    margin-bottom: 8px;
     user-select: none;
+    text-transform: uppercase;
+    letter-spacing: 1px;
   }
 
   .sidebar-toggle:active {
-    transform: scale(0.98);
+    background: var(--panel);
   }
 
   .sidebar-content {
