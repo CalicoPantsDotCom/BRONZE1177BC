@@ -1,30 +1,30 @@
 /* BRONZE: 1177 BC - v2.5 MAXIMUM Brightness (All Text Brightened) */
 
 :root {
-  /* Lighter dark mode - MAXIMUM VISIBILITY */
-  --bg: #36383f;            /* Lighter background for better contrast */
-  --panel: #45474f;         /* Much lighter panels */
-  --panel-2: #52555d;       /* Even lighter for depth */
+  /* ULTRA BRIGHT - Near light mode visibility */
+  --bg: #4a4d55;            /* Much lighter gray background */
+  --panel: #5a5d65;         /* Very light panels */
+  --panel-2: #6a6d75;       /* Even lighter for depth */
   --text: #ffffff;          /* Pure white */
-  --muted: #f0f1f3;         /* Almost white muted text */
-  --border: #6a6d75;        /* Much more visible borders */
+  --muted: #f5f5f5;         /* Nearly white muted text */
+  --border: #8a8d95;        /* Very bright borders */
 
-  /* BRIGHTER accent colors for maximum visibility */
-  --accent: #ffb84d;        /* Brighter warm gold */
-  --warn: #ff5c5c;          /* Brighter red */
-  --ok: #3dd46f;            /* Much brighter green */
-  --info: #7289ff;          /* Brighter blue */
+  /* ULTRA BRIGHT accent colors */
+  --accent: #ffd666;        /* Very bright gold */
+  --warn: #ff6b6b;          /* Very bright red */
+  --ok: #51ff7d;            /* Neon green */
+  --info: #80a0ff;          /* Very bright blue */
 
-  /* Resource colors - MAXIMUM BRIGHTNESS */
-  --grain: #ffd24d;         /* Bright golden wheat */
-  --bronze: #ff9f4d;        /* Brighter bronze/orange */
-  --timber: #6fdb72;        /* Bright green */
+  /* Resource colors - NEON BRIGHTNESS */
+  --grain: #ffe66d;         /* Neon yellow */
+  --bronze: #ffb366;        /* Neon orange */
+  --timber: #7dff7d;        /* Neon green */
 
-  /* Metric colors - MAXIMUM BRIGHTNESS */
-  --stability-color: #3dd46f;   /* Bright green */
-  --military-color: #ff5c5c;    /* Bright red */
-  --prestige-color: #7289ff;    /* Bright blue */
-  --collapse-color: #ff5c5c;    /* Bright red (danger) */
+  /* Metric colors - NEON BRIGHTNESS */
+  --stability-color: #51ff7d;   /* Neon green */
+  --military-color: #ff6b6b;    /* Neon red */
+  --prestige-color: #80a0ff;    /* Neon blue */
+  --collapse-color: #ff6b6b;    /* Neon red */
 
   /* Layout */
   --radius: 12px;
