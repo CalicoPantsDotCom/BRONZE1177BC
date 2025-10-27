@@ -391,7 +391,7 @@ class GameState:
         return True
 
     # Diplomacy actions
-    def send_tribute(self):
+    def send_tribute(self, target="egypt"):
         if self.has_taken_paid_action:
             self.add_message("❌ You've already taken your paid action this turn!", "danger")
             return False
@@ -399,13 +399,22 @@ class GameState:
             self.add_message("Insufficient resources! Need 15 Grain, 10 Bronze.", "danger")
             return False
 
+        # Target-specific flavor text
+        target_names = {
+            "egypt": "🏛️ Egypt",
+            "hittites": "⚔️ the Hittites",
+            "assyria": "🦁 Assyria",
+            "mycenae": "🏺 Mycenae"
+        }
+        target_name = target_names.get(target, "a great power")
+
         self.grain -= 15
         self.bronze -= 10
         self.prestige += 5
         self.collapse -= 3
         self.has_taken_paid_action = True
-        self.log_action("Send Tribute", "-15 Grain, -10 Bronze | +5 Prestige, -3 Collapse")
-        self.add_message("✓ Tribute sent: +5 Prestige, -3 Collapse", "success")
+        self.log_action(f"Send Tribute to {target_name}", "-15 Grain, -10 Bronze | +5 Prestige, -3 Collapse")
+        self.add_message(f"✓ Tribute sent to {target_name}: +5 Prestige, -3 Collapse", "success")
         self.check_and_auto_end_turn()
         return True
 

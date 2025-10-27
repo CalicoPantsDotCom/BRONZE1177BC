@@ -103,7 +103,8 @@ def action(action_name):
 
     # Diplomacy actions
     elif action_name == 'send_tribute':
-        success = game.send_tribute()
+        target = request.form.get('target', 'egypt')  # Get target from form, default to egypt
+        success = game.send_tribute(target=target)
     elif action_name == 'form_alliance':
         success = game.form_alliance()
     elif action_name == 'host_festival':

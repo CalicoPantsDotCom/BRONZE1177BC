@@ -294,9 +294,15 @@
                 </form>
 
                 <small class="text-muted d-block mb-2">Diplomacy:</small>
-                <form method="POST" action="{{ url_for('action', action_name='send_tribute') }}">
-                    <button type="submit" class="btn btn-outline-secondary btn-sm w-100 mb-2">
-                        🎁 Send Tribute (15G, 10B)
+                <form method="POST" action="{{ url_for('action', action_name='send_tribute') }}" style="margin-bottom: 8px;">
+                    <select name="target" class="btn btn-sm w-100 mb-1" style="text-align: left; padding: 6px 12px;">
+                        <option value="egypt">🏛️ Send Tribute to Egypt</option>
+                        <option value="hittites">⚔️ Send Tribute to Hittites</option>
+                        <option value="assyria">🦁 Send Tribute to Assyria</option>
+                        <option value="mycenae">🏺 Send Tribute to Mycenae</option>
+                    </select>
+                    <button type="submit" class="btn btn-outline-secondary btn-sm w-100">
+                        🎁 Send (15G, 10B) → +5P, -3 Collapse
                     </button>
                 </form>
                 <form method="POST" action="{{ url_for('action', action_name='form_alliance') }}">
