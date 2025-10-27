@@ -178,78 +178,7 @@
         {% endfor %}
     </div>
 
-    <!-- Resources Panel -->
-    <div class="col-lg-4 col-md-6 mb-3">
-        <div class="card border-warning">
-            <div class="card-header bg-warning text-dark">
-                <strong>📦 Resources</strong>
-            </div>
-            <div class="card-body">
-                <div class="d-flex justify-content-between mb-2">
-                    <span>🌾 Grain:</span>
-                    <strong>{{ game.grain }}</strong>
-                </div>
-                <div class="d-flex justify-content-between mb-2">
-                    <span>🪵 Timber:</span>
-                    <strong>{{ game.timber }}</strong>
-                </div>
-                <div class="d-flex justify-content-between">
-                    <span>🔶 Bronze:</span>
-                    <strong>{{ game.bronze }}</strong>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Metrics Panel -->
-    <div class="col-lg-4 col-md-6 mb-3">
-        <div class="card border-info">
-            <div class="card-header bg-info text-white">
-                <strong>📊 Core Metrics</strong>
-            </div>
-            <div class="card-body">
-                <div class="d-flex justify-content-between mb-2">
-                    <span>⚔️ Military:</span>
-                    <strong>{{ game.military }}</strong>
-                </div>
-                <div class="d-flex justify-content-between mb-2">
-                    <span>🛡️ Stability:</span>
-                    <strong class="{{ 'text-danger' if game.stability < 30 else 'text-success' if game.stability > 60 else '' }}">
-                        {{ game.stability }}
-                    </strong>
-                </div>
-                <div class="d-flex justify-content-between">
-                    <span>👑 Prestige:</span>
-                    <strong>{{ game.prestige }}</strong>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Crisis Panel -->
-    <div class="col-lg-4 col-md-12 mb-3">
-        <div class="card border-danger">
-            <div class="card-header bg-danger text-white">
-                <strong>⚠️ Crisis Level</strong>
-            </div>
-            <div class="card-body">
-                <div class="d-flex justify-content-between align-items-center">
-                    <span>🔥 Collapse:</span>
-                    <h3 class="mb-0 {{ 'text-danger' if game.collapse > 70 else 'text-warning' if game.collapse > 40 else 'text-success' }}">
-                        {{ game.collapse }}
-                    </h3>
-                </div>
-                <div class="progress mt-2" style="height: 20px;">
-                    <div class="progress-bar
-                        {{ 'bg-danger' if game.collapse > 70 else 'bg-warning' if game.collapse > 40 else 'bg-success' }}"
-                        role="progressbar"
-                        style="width: {{ game.collapse }}%">
-                        {{ game.collapse }}%
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
+    <!-- Resources & Metrics now in sticky bar above - removed redundant panels -->
 </div>
 
 <!-- Actions -->
@@ -365,9 +294,15 @@
                 </form>
 
                 <small class="text-muted d-block mb-2">Diplomacy:</small>
-                <form method="POST" action="{{ url_for('action', action_name='send_tribute') }}">
-                    <button type="submit" class="btn btn-outline-secondary btn-sm w-100 mb-2">
-                        🎁 Send Tribute (15G, 10B)
+                <form method="POST" action="{{ url_for('action', action_name='send_tribute') }}" style="margin-bottom: 8px;">
+                    <select name="target" class="btn btn-sm w-100 mb-1" style="text-align: left; padding: 6px 12px;">
+                        <option value="egypt">🏛️ Send Tribute to Egypt</option>
+                        <option value="hittites">⚔️ Send Tribute to Hittites</option>
+                        <option value="assyria">🦁 Send Tribute to Assyria</option>
+                        <option value="mycenae">🏺 Send Tribute to Mycenae</option>
+                    </select>
+                    <button type="submit" class="btn btn-outline-secondary btn-sm w-100">
+                        🎁 Send (15G, 10B) → +5P, -3 Collapse
                     </button>
                 </form>
                 <form method="POST" action="{{ url_for('action', action_name='form_alliance') }}">

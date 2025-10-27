@@ -119,47 +119,59 @@ class GameState:
     # Actions
     def harvest(self):
         """Action: Harvest (+15 Grain, +10 Bronze) - First one FREE, second costs turn"""
-        self.grain += 15
-        self.bronze += 10
-
         if not self.has_used_free_harvest:
             # First harvest is FREE
+            self.grain += 15
+            self.bronze += 10
             self.has_used_free_harvest = True
             self.log_action("Harvest (FREE)", "+15 Grain, +10 Bronze")
             self.add_message("✓ Harvested: +15 Grain, +10 Bronze (FREE)", "success")
-            # Don't auto-end, need paid action too
+            self.check_and_auto_end_turn()
             return True
-        else:
-            # Second harvest costs the paid action
+        elif not self.has_taken_paid_action:
+            # Second harvest costs the paid action (only if no paid action taken yet)
+            self.grain += 15
+            self.bronze += 10
             self.has_taken_paid_action = True
             self.log_action("Harvest", "+15 Grain, +10 Bronze (paid action)")
             self.add_message("✓ Harvested: +15 Grain, +10 Bronze (used paid action)", "success")
             self.check_and_auto_end_turn()
             return True
+        else:
+            # Can't harvest - already used free harvest AND took a paid action
+            self.add_message("❌ You've already taken your paid action this turn!", "danger")
+            return False
 
     def gather_timber(self):
         """Action: Gather Timber (-8 Grain → +10 Timber) - First one FREE, second costs turn"""
-        if self.grain < 8:
-            self.add_message("Insufficient Grain! Need 8 Grain.", "danger")
-            return False
-
-        self.grain -= 8
-        self.timber += 10
-
         if not self.has_used_free_harvest:
             # First gather is FREE
+            if self.grain < 8:
+                self.add_message("Insufficient Grain! Need 8 Grain.", "danger")
+                return False
+            self.grain -= 8
+            self.timber += 10
             self.has_used_free_harvest = True
             self.log_action("Gather Timber (FREE)", "-8 Grain, +10 Timber")
             self.add_message("✓ Gathered Timber: -8 Grain, +10 Timber (FREE)", "success")
-            # Don't auto-end, need paid action too
+            self.check_and_auto_end_turn()
             return True
-        else:
-            # Second gather costs the paid action
+        elif not self.has_taken_paid_action:
+            # Second gather costs the paid action (only if no paid action taken yet)
+            if self.grain < 8:
+                self.add_message("Insufficient Grain! Need 8 Grain.", "danger")
+                return False
+            self.grain -= 8
+            self.timber += 10
             self.has_taken_paid_action = True
             self.log_action("Gather Timber", "-8 Grain, +10 Timber (paid action)")
             self.add_message("✓ Gathered Timber: -8 Grain, +10 Timber (used paid action)", "success")
             self.check_and_auto_end_turn()
             return True
+        else:
+            # Can't gather - already used free harvest AND took a paid action
+            self.add_message("❌ You've already taken your paid action this turn!", "danger")
+            return False
 
     def fortify(self):
         """Action: Fortify (+5 Military, -5 Stability) - PAID ACTION"""
@@ -379,7 +391,7 @@ class GameState:
         return True
 
     # Diplomacy actions
-    def send_tribute(self):
+    def send_tribute(self, target="egypt"):
         if self.has_taken_paid_action:
             self.add_message("❌ You've already taken your paid action this turn!", "danger")
             return False
@@ -387,13 +399,22 @@ class GameState:
             self.add_message("Insufficient resources! Need 15 Grain, 10 Bronze.", "danger")
             return False
 
+        # Target-specific flavor text
+        target_names = {
+            "egypt": "🏛️ Egypt",
+            "hittites": "⚔️ the Hittites",
+            "assyria": "🦁 Assyria",
+            "mycenae": "🏺 Mycenae"
+        }
+        target_name = target_names.get(target, "a great power")
+
         self.grain -= 15
         self.bronze -= 10
         self.prestige += 5
         self.collapse -= 3
         self.has_taken_paid_action = True
-        self.log_action("Send Tribute", "-15 Grain, -10 Bronze | +5 Prestige, -3 Collapse")
-        self.add_message("✓ Tribute sent: +5 Prestige, -3 Collapse", "success")
+        self.log_action(f"Send Tribute to {target_name}", "-15 Grain, -10 Bronze | +5 Prestige, -3 Collapse")
+        self.add_message(f"✓ Tribute sent to {target_name}: +5 Prestige, -3 Collapse", "success")
         self.check_and_auto_end_turn()
         return True
 
