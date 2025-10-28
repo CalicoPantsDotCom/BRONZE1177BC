@@ -26,6 +26,18 @@ class TurnSummary:
 
 
 @dataclass
+class ChoiceEvent:
+    """Represents a choice-based event that requires player decision"""
+    event_id: str
+    title: str
+    description: str
+    choice_a_label: str
+    choice_a_effects: str
+    choice_b_label: str
+    choice_b_effects: str
+
+
+@dataclass
 class Game:
     # Core resources / metrics
     grain: int = 50
@@ -68,6 +80,9 @@ class Game:
     # Messaging for UI
     message_log: List[Dict[str, str]] = field(default_factory=list)
     previous_turn_summary: Optional[TurnSummary] = None
+
+    # Choice events
+    pending_choice: Optional[ChoiceEvent] = None
 
     # ------------------------
     # Utility / logging
@@ -232,7 +247,7 @@ class Game:
 
     # Event tables (v1.2 feel)
     def resolve_random_event(self) -> None:
-        NEG, POS = "neg", "pos"
+        NEG, POS, CHOICE = "neg", "pos", "choice"
         tables = {
             NEG: [
                 ("Sea Peoples Raid",        6,  lambda: self._apply(d_mil=-12, d_stab=-9,  d_col=+8)),
@@ -248,8 +263,9 @@ class Game:
                 ("Technological Breakthrough", 3, lambda: self._apply(d_know=+15, d_stab=+5, d_col=-2)),
             ],
         }
-        NEGATIVE_CHANCE = 0.55
-        POSITIVE_CHANCE = 0.35
+        NEGATIVE_CHANCE = 0.50
+        POSITIVE_CHANCE = 0.30
+        CHOICE_CHANCE = 0.10
 
         r = random.random()
         if r < NEGATIVE_CHANCE:
@@ -260,6 +276,9 @@ class Game:
             name, delta = self._weighted_apply(tables[POS])
             self._log(f"✓ POSITIVE EVENT: {name} — {delta}", "success")
             self._add_event_summary(f"POSITIVE: {name} — {delta}")
+        elif r < NEGATIVE_CHANCE + POSITIVE_CHANCE + CHOICE_CHANCE:
+            # Trigger a choice event
+            self._trigger_choice_event()
         else:
             # No event
             pass
@@ -276,6 +295,105 @@ class Game:
         name, _, fn = table[-1]
         delta = fn()
         return name, (delta or "—")
+
+    def _trigger_choice_event(self) -> None:
+        """Randomly select and trigger a choice event"""
+        choice_events = [
+            self._create_vassal_aid_choice,
+            self._create_hittite_trade_choice,
+            self._create_refugee_crisis_choice,
+        ]
+        choice_fn = random.choice(choice_events)
+        self.pending_choice = choice_fn()
+        self._log(f"⚠️ CHOICE EVENT: {self.pending_choice.title}", "warning")
+
+    def _create_vassal_aid_choice(self) -> ChoiceEvent:
+        """Vassal Requests Aid choice event"""
+        return ChoiceEvent(
+            event_id="vassal_aid",
+            title="Vassal Requests Aid",
+            description="A vassal kingdom sends urgent word: famine threatens their lands. They request grain supplies to stabilize their region.",
+            choice_a_label="Send Grain (-20 Grain)",
+            choice_a_effects="+8 Prestige, +5 Stability, -2 Collapse",
+            choice_b_label="Refuse Aid",
+            choice_b_effects="-10 Prestige, -8 Stability, +3 Collapse"
+        )
+
+    def _create_hittite_trade_choice(self) -> ChoiceEvent:
+        """Hittite Trade Offer choice event"""
+        return ChoiceEvent(
+            event_id="hittite_trade",
+            title="Hittite Trade Offer",
+            description="Hittite merchants arrive with a trade proposal: they offer valuable bronze ingots in exchange for timber from your forests.",
+            choice_a_label="Accept Trade (-15 Timber)",
+            choice_a_effects="+12 Bronze, +5 Prestige, -1 Collapse",
+            choice_b_label="Decline Offer",
+            choice_b_effects="-3 Prestige"
+        )
+
+    def _create_refugee_crisis_choice(self) -> ChoiceEvent:
+        """Refugee Crisis choice event"""
+        return ChoiceEvent(
+            event_id="refugee_crisis",
+            title="Refugee Crisis",
+            description="Refugees from a collapsed neighboring kingdom arrive at your borders, seeking shelter and protection.",
+            choice_a_label="Welcome Refugees (-12 Grain)",
+            choice_a_effects="+10 Stability, +6 Military, -2 Collapse",
+            choice_b_label="Turn Them Away",
+            choice_b_effects="-12 Stability, +3 Military, +4 Collapse"
+        )
+
+    def resolve_choice(self, choice: str) -> bool:
+        """Handle player's choice for a pending choice event"""
+        if not self.pending_choice:
+            return False
+
+        event_id = self.pending_choice.event_id
+        
+        if event_id == "vassal_aid":
+            if choice == "a":
+                if self.grain < 20:
+                    self._log("Insufficient Grain to send aid!", "danger")
+                    return False
+                self.grain -= 20
+                self._apply(d_prestige=+8, d_stab=+5, d_col=-2)
+                self._log(f"✓ {self.pending_choice.choice_a_label}: {self.pending_choice.choice_a_effects}", "success")
+                self._add_event_summary(f"CHOICE: {self.pending_choice.title} → Sent Aid")
+            else:
+                self._apply(d_prestige=-10, d_stab=-8, d_col=+3)
+                self._log(f"✓ {self.pending_choice.choice_b_label}: {self.pending_choice.choice_b_effects}", "warning")
+                self._add_event_summary(f"CHOICE: {self.pending_choice.title} → Refused")
+        
+        elif event_id == "hittite_trade":
+            if choice == "a":
+                if self.timber < 15:
+                    self._log("Insufficient Timber for trade!", "danger")
+                    return False
+                self.timber -= 15
+                self._apply(d_bronze=+12, d_prestige=+5, d_col=-1)
+                self._log(f"✓ {self.pending_choice.choice_a_label}: {self.pending_choice.choice_a_effects}", "success")
+                self._add_event_summary(f"CHOICE: {self.pending_choice.title} → Accepted Trade")
+            else:
+                self._apply(d_prestige=-3)
+                self._log(f"✓ {self.pending_choice.choice_b_label}: {self.pending_choice.choice_b_effects}", "warning")
+                self._add_event_summary(f"CHOICE: {self.pending_choice.title} → Declined")
+        
+        elif event_id == "refugee_crisis":
+            if choice == "a":
+                if self.grain < 12:
+                    self._log("Insufficient Grain to welcome refugees!", "danger")
+                    return False
+                self.grain -= 12
+                self._apply(d_stab=+10, d_mil=+6, d_col=-2)
+                self._log(f"✓ {self.pending_choice.choice_a_label}: {self.pending_choice.choice_a_effects}", "success")
+                self._add_event_summary(f"CHOICE: {self.pending_choice.title} → Welcomed Refugees")
+            else:
+                self._apply(d_stab=-12, d_mil=+3, d_col=+4)
+                self._log(f"✓ {self.pending_choice.choice_b_label}: {self.pending_choice.choice_b_effects}", "warning")
+                self._add_event_summary(f"CHOICE: {self.pending_choice.title} → Turned Away")
+        
+        self.pending_choice = None
+        return True
 
     def can_end_turn(self) -> bool:
         if not self.free_harvest_used:
@@ -338,4 +456,6 @@ class Game:
             "message_log": self.message_log[-8:],  # show latest few
             "previous_turn_summary": (self.previous_turn_summary.__dict__
                                       if self.previous_turn_summary else None),
+            "pending_choice": (self.pending_choice.__dict__
+                              if self.pending_choice else None),
         }
