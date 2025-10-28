@@ -102,15 +102,36 @@ def game():
         
         # Validate game state
         if not hasattr(g, 'turn') or not hasattr(g, 'to_dict'):
-            logger.error("Invalid game state detected")
-            return redirect(url_for("index"))
+            logger.error("Invalid game state detected - missing required attributes")
+            # Create new game as fallback
+            sid = _sid()
+            GAMES[sid] = Game()
+            g = GAMES[sid]
+            g._log("Game state was invalid - created new game.", "warning")
+        
+        # Additional validation checks
+        if g.turn < 1:
+            logger.warning(f"Invalid turn number {g.turn}, resetting to 1")
+            g.turn = 1
+        
+        if g.max_turns < g.turn:
+            logger.warning(f"Turn {g.turn} exceeds max_turns {g.max_turns}")
+            # Don't reset, just log - game may be in end state
         
         # Pass game state to template
         return render_template("game.html", game=g.to_dict())
     except Exception as e:
         logger.error(f"Error in game route: {e}", exc_info=True)
-        # Redirect to index on error - user can start a new game
-        return redirect(url_for("index"))
+        # Try to create a fresh game
+        try:
+            sid = _sid()
+            GAMES[sid] = Game()
+            logger.info("Created new game after error")
+            return redirect(url_for("game"))
+        except Exception as recovery_error:
+            logger.error(f"Could not recover from game error: {recovery_error}", exc_info=True)
+            # Last resort - redirect to index
+            return redirect(url_for("index"))
 
 
 @app.post("/action")
@@ -165,13 +186,24 @@ def action():
         elif a == "host_festival":
             success = g.host_festival()
         else:
+            logger.warning(f"Unknown or cancelled action: {a}")
             g._log("Action cancelled.", "secondary")
             success = False  # never advance on cancel
         
         logger.info(f"Action {a} result: {success}")
+        
+        if not success:
+            logger.warning(f"Action {a} failed - check game state or resources")
+        
         return redirect(url_for("game"))
     except Exception as e:
         logger.error(f"Error in action route: {e}", exc_info=True)
+        # Add error message to game log if possible
+        try:
+            g = _game()
+            g._log("An error occurred processing your action. Please try again.", "danger")
+        except Exception as log_error:
+            logger.error(f"Could not add error message to game log: {log_error}")
         return redirect(url_for("game"))
 
 
@@ -184,7 +216,12 @@ def choice():
         logger.info(f"Processing choice: {choice_value} for turn {g.turn}")
 
         if choice_value in ["a", "b"]:
-            g.resolve_choice(choice_value)
+            # Attempt to resolve the choice
+            if not g.resolve_choice(choice_value):
+                logger.warning(f"Choice {choice_value} resolution failed - likely insufficient resources")
+                # Message already added by resolve_choice
+                return redirect(url_for("game"))
+            
             logger.info(f"Choice {choice_value} resolved successfully")
             
             # Auto-advance turn if both actions are complete
@@ -210,12 +247,21 @@ def choice():
                         logger.info("Preservation victory achieved after choice")
                         session["victory"] = {"type": "preservation", "final": g.to_dict()}
                         return redirect(url_for("victory"))
+                else:
+                    logger.warning("Failed to auto-advance turn after choice")
         else:
             logger.warning(f"Invalid choice value: {choice_value}")
+            g._log("Invalid choice selected.", "danger")
 
         return redirect(url_for("game"))
     except Exception as e:
         logger.error(f"Error in choice route: {e}", exc_info=True)
+        # Try to add error message to game
+        try:
+            g = _game()
+            g._log("An error occurred processing your choice. Please try again.", "danger")
+        except Exception as log_error:
+            logger.error(f"Could not add error message to game log: {log_error}")
         return redirect(url_for("game"))
 
 
@@ -235,30 +281,40 @@ def end_turn():
         logger.info(f"Turn {g.turn - 1} ended successfully, now on turn {g.turn}")
 
         # Check victory/defeat conditions with better separation
-        if g.turn > g.max_turns and g.collapse >= 80 and g.military >= 50:
-            # Vacuum victory
-            logger.info("Vacuum victory achieved")
-            session["victory"] = {"type": "vacuum", "final": g.to_dict()}
-            return redirect(url_for("victory"))
-        
-        # Separate defeat conditions for better handling
-        if g.stability <= 0:
-            logger.info("Defeat: Stability collapsed to 0")
-            session["victory"] = {"type": "defeat", "reason": "stability", "final": g.to_dict()}
-            return redirect(url_for("victory"))
-        if g.military <= 0:
-            logger.info("Defeat: Military collapsed to 0")
-            session["victory"] = {"type": "defeat", "reason": "military", "final": g.to_dict()}
-            return redirect(url_for("victory"))
-        
-        if g.collapse == 0:
-            logger.info("Preservation victory achieved")
-            session["victory"] = {"type": "preservation", "final": g.to_dict()}
-            return redirect(url_for("victory"))
+        try:
+            if g.turn > g.max_turns and g.collapse >= 80 and g.military >= 50:
+                # Vacuum victory
+                logger.info("Vacuum victory achieved")
+                session["victory"] = {"type": "vacuum", "final": g.to_dict()}
+                return redirect(url_for("victory"))
+            
+            # Separate defeat conditions for better handling
+            if g.stability <= 0:
+                logger.info("Defeat: Stability collapsed to 0")
+                session["victory"] = {"type": "defeat", "reason": "stability", "final": g.to_dict()}
+                return redirect(url_for("victory"))
+            if g.military <= 0:
+                logger.info("Defeat: Military collapsed to 0")
+                session["victory"] = {"type": "defeat", "reason": "military", "final": g.to_dict()}
+                return redirect(url_for("victory"))
+            
+            if g.collapse == 0:
+                logger.info("Preservation victory achieved")
+                session["victory"] = {"type": "preservation", "final": g.to_dict()}
+                return redirect(url_for("victory"))
+        except Exception as victory_check_error:
+            logger.error(f"Error checking victory conditions: {victory_check_error}", exc_info=True)
+            # Continue to game even if victory check failed
 
         return redirect(url_for("game"))
     except Exception as e:
         logger.error(f"Error in end_turn route: {e}", exc_info=True)
+        # Try to add error message
+        try:
+            g = _game()
+            g._log("An error occurred ending the turn. Please try again.", "danger")
+        except Exception as log_error:
+            logger.error(f"Could not add error message: {log_error}")
         return redirect(url_for("game"))
 
 

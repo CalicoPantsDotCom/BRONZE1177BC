@@ -654,10 +654,28 @@ class Game:
 
             logger.info(f"Ending turn {self.turn}")
             
-            self.apply_income()
-            self.resolve_random_event()
-            self.apply_drift()
+            # Apply income with error handling
+            try:
+                self.apply_income()
+            except Exception as e:
+                logger.error(f"Error applying income: {e}", exc_info=True)
+                self._log("Error calculating income, but turn continues.", "warning")
+            
+            # Resolve random events with error handling
+            try:
+                self.resolve_random_event()
+            except Exception as e:
+                logger.error(f"Error resolving random event: {e}", exc_info=True)
+                self._log("Error processing event, but turn continues.", "warning")
+            
+            # Apply drift with error handling
+            try:
+                self.apply_drift()
+            except Exception as e:
+                logger.error(f"Error applying drift: {e}", exc_info=True)
+                self._log("Error applying collapse drift, but turn continues.", "warning")
 
+            # Always advance turn and reset flags, even if there were errors above
             self.turn += 1
             self.free_harvest_used = False
             self.paid_action_used = False
@@ -671,10 +689,15 @@ class Game:
             logger.info(f"Turn advanced to {self.turn}")
             return True
         except Exception as e:
-            logger.error(f"Error in end_turn: {e}", exc_info=True)
+            logger.error(f"Critical error in end_turn: {e}", exc_info=True)
             # Try to recover by at least resetting the flags
-            self.free_harvest_used = False
-            self.paid_action_used = False
+            # This ensures players can continue even if there's an error
+            try:
+                self.free_harvest_used = False
+                self.paid_action_used = False
+                logger.info("Recovered: Reset action flags")
+            except Exception as recovery_error:
+                logger.error(f"Could not reset flags: {recovery_error}", exc_info=True)
             return False
 
     # ------------------------
