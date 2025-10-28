@@ -10,6 +10,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 import random
 import logging
+import math
 from typing import Dict, List, Optional
 
 # Configure logging
@@ -92,6 +93,7 @@ class Game:
     # Messaging for UI
     message_log: List[Dict[str, str]] = field(default_factory=list)
     previous_turn_summary: Optional[TurnSummary] = None
+    current_turn_actions: List[Dict[str, str]] = field(default_factory=list)
 
     # Choice events
     pending_choice: Optional[ChoiceEvent] = None
@@ -129,6 +131,10 @@ class Game:
         if not self.previous_turn_summary or self.previous_turn_summary.turn_number != self.turn:
             self._start_turn_summary()
         self.previous_turn_summary.actions.append(line)
+    
+    def _add_current_turn_action(self, name: str, effects: str) -> None:
+        """Add an action to the current turn tracking"""
+        self.current_turn_actions.append({"name": name, "effects": effects})
 
     def _add_event_summary(self, line: str) -> None:
         if not self.previous_turn_summary or self.previous_turn_summary.turn_number != self.turn:
@@ -151,7 +157,8 @@ class Game:
                d_stab: int = 0, d_know: int = 0, d_elast: int = 0, d_mil: int = 0, d_col: int = 0) -> str:
 
         if self.tech_imperial_bureaucracy and d_stab < 0:
-            d_stab = int(round(d_stab * 0.75))  # –25% losses
+            # Use ceil to round toward zero for negative values (e.g., -7.5 becomes -7, not -8)
+            d_stab = math.ceil(d_stab * 0.75)
 
         self.grain += d_grain
         self.bronze += d_bronze
@@ -184,6 +191,7 @@ class Game:
             return False
         detail = self._apply(d_grain=+15, d_bronze=+10)
         self._add_action_summary(f"Harvest: {detail}")
+        self._add_current_turn_action("Harvest", "+15 Grain, +10 Bronze")
         self.free_harvest_used = True
         self._log("✓ Harvested! +15 Grain, +10 Bronze", "success")
         return True
@@ -198,6 +206,7 @@ class Game:
             return False
         detail = self._apply(d_grain=-8, d_timber=+10)
         self._add_action_summary(f"Gather Timber: {detail}")
+        self._add_current_turn_action("Gather Timber", "-8 Grain, +10 Timber")
         self.paid_action_used = True
         self._log("✓ Gathered Timber! -8 Grain, +10 Timber", "success")
         return True
@@ -211,6 +220,7 @@ class Game:
             return False
         detail = self._apply(d_bronze=-10, d_mil=+8)
         self._add_action_summary(f"Fortify Defenses: {detail}")
+        self._add_current_turn_action("Fortify Defenses", "-10 Bronze, +8 Military")
         self.paid_action_used = True
         self._log("✓ Defenses fortified! -10 Bronze, +8 Military", "success")
         return True
@@ -635,6 +645,12 @@ class Game:
             self.free_harvest_used = False
             self.paid_action_used = False
             
+            # Initialize turn summary at start of new turn
+            self._start_turn_summary()
+            
+            # Clear current turn actions for the new turn
+            self.current_turn_actions = []
+            
             logger.info(f"Turn advanced to {self.turn}")
             return True
         except Exception as e:
@@ -689,6 +705,7 @@ class Game:
                     "watchtower": self.has_watchtower,
                 },
                 "message_log": self.message_log[-8:],  # show latest few
+                "current_turn_actions": self.current_turn_actions,
                 "previous_turn_summary": (self.previous_turn_summary.__dict__
                                           if self.previous_turn_summary else None),
                 "pending_choice": (self.pending_choice.__dict__
@@ -717,6 +734,7 @@ class Game:
                 "tech": {},
                 "builds": {},
                 "message_log": [],
+                "current_turn_actions": [],
                 "previous_turn_summary": None,
                 "pending_choice": None,
             }
