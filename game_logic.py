@@ -270,7 +270,7 @@ class Game:
             return False
         detail = self._apply(d_timber=-20, d_grain=-15)
         self.has_bronze_mine = True
-        self._add_action_summary("Built Bronze Mine", "+3 Bronze / turn")
+        self._add_action_summary("Built Bronze Mine", f"{detail} → +3 Bronze/turn")
         self.paid_action_used = True
         self._log("✓ Bronze Mine built! +3 Bronze each turn.", "success")
         return True
@@ -287,7 +287,7 @@ class Game:
             return False
         detail = self._apply(d_timber=-15, d_grain=-20)
         self.has_granary = True
-        self._add_action_summary("Built Granary", "+5 Grain / turn")
+        self._add_action_summary("Built Granary", f"{detail} → +5 Grain/turn")
         self.paid_action_used = True
         self._log("✓ Granary built! +5 Grain each turn.", "success")
         return True
@@ -304,7 +304,7 @@ class Game:
             return False
         detail = self._apply(d_timber=-20, d_grain=-25, d_bronze=-10, d_mil=+15)
         self.has_barracks = True
-        self._add_action_summary("Built Barracks", "+15 Military")
+        self._add_action_summary("Built Barracks", detail)
         self.paid_action_used = True
         self._log("✓ Barracks built! +15 Military.", "success")
         return True
@@ -321,7 +321,7 @@ class Game:
             return False
         detail = self._apply(d_timber=-25, d_grain=-30, d_bronze=-15, d_prestige=+20, d_stab=+10)
         self.has_palace = True
-        self._add_action_summary("Built Palace", "+20 Prestige, +10 Stability")
+        self._add_action_summary("Built Palace", detail)
         self.paid_action_used = True
         self._log("✓ Palace built! +20 Prestige, +10 Stability.", "success")
         return True
@@ -338,7 +338,7 @@ class Game:
             return False
         detail = self._apply(d_timber=-20, d_grain=-20, d_prestige=+10, d_col=-3)
         self.has_lighthouse = True
-        self._add_action_summary("Built Lighthouse", "+10 Prestige, -3 Collapse")
+        self._add_action_summary("Built Lighthouse", detail)
         self.paid_action_used = True
         self._log("✓ Lighthouse built! +10 Prestige, -3 Collapse.", "success")
         return True
@@ -355,7 +355,7 @@ class Game:
             return False
         detail = self._apply(d_timber=-15, d_grain=-15, d_mil=+10)
         self.has_watchtower = True
-        self._add_action_summary("Built Watchtower", "+10 Military")
+        self._add_action_summary("Built Watchtower", detail)
         self.paid_action_used = True
         self._log("✓ Watchtower built! +10 Military.", "success")
         return True
