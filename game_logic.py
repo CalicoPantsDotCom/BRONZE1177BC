@@ -157,7 +157,7 @@ class Game:
                d_stab: int = 0, d_know: int = 0, d_elast: int = 0, d_mil: int = 0, d_col: int = 0) -> str:
 
         if self.tech_imperial_bureaucracy and d_stab < 0:
-            # Use ceil to round toward zero for negative values (e.g., -7.5 becomes -7, not -8)
+            # Apply 25% reduction, then ceil rounds negative values up (e.g., -7.5 → -7, -10 → -10)
             d_stab = math.ceil(d_stab * 0.75)
 
         self.grain += d_grain
