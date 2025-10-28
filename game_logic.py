@@ -80,7 +80,7 @@ class Game:
     # Messaging for UI
     message_log: List[Dict[str, str]] = field(default_factory=list)
     previous_turn_summary: Optional[TurnSummary] = None
-    
+
     # Choice events
     pending_choice: Optional[ChoiceEvent] = None
 

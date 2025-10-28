@@ -85,10 +85,10 @@ def action():
 def choice():
     g = _game()
     choice_value = request.form.get("choice", "")
-    
+
     if choice_value in ["a", "b"]:
         g.resolve_choice(choice_value)
-    
+
     return redirect(url_for("game"))
 
 
