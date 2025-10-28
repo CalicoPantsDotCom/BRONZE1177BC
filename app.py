@@ -1,158 +1,116 @@
-"""
-BRONZE: 1177 BC - Flask Web App
-v1.2.6 - Web Edition
-"""
-
-from flask import Flask, render_template, session, redirect, url_for, request, jsonify
-from game_logic import GameState
+# app.py — Flask wiring (v4.1 parity patch)
+from __future__ import annotations
+from flask import Flask, render_template, request, redirect, url_for, session
+from game_logic import Game
 import os
+from uuid import uuid4
 
 app = Flask(__name__)
-app.secret_key = os.environ.get('SECRET_KEY', 'bronze-1177-bc-secret-key-change-in-production')
+app.secret_key = os.environ.get("SECRET_KEY", "dev-key")
 
-def get_game():
-    """Get or create game state from session"""
-    if 'game' not in session:
-        game = GameState()
-        session['game'] = game.to_dict()
-    else:
-        game = GameState.from_dict(session['game'])
-    return game
+# In-memory store keyed by session id (simple & fine for single-player)
+GAMES = {}
 
-def save_game(game):
-    """Save game state to session"""
-    session['game'] = game.to_dict()
-    session.modified = True
+def _sid() -> str:
+    sid = session.get("sid")
+    if not sid:
+        sid = str(uuid4())
+        session["sid"] = sid
+    return sid
 
-@app.route('/')
+def _game() -> Game:
+    sid = _sid()
+    if sid not in GAMES:
+        GAMES[sid] = Game()
+    return GAMES[sid]
+
+
+@app.route("/")
 def index():
-    """Landing page"""
-    return render_template('index.html')
+    return render_template("index.html")
 
-@app.route('/new_game')
-@app.route('/new_game/<difficulty>')
-def new_game(difficulty='normal'):
-    """Start a new game with selected difficulty"""
-    game = GameState(difficulty=difficulty)
-    session['game'] = game.to_dict()
-    return redirect(url_for('game'))
 
-@app.route('/choose_difficulty/<difficulty>')
-def choose_difficulty(difficulty='normal'):
-    """Set difficulty and redirect to game"""
-    session['difficulty'] = difficulty
-    return redirect(url_for('new_game', difficulty=difficulty))
+@app.route("/new_game/<difficulty>")
+def new_game(difficulty):
+    # You can tune difficulty to set max_turns / starting stats
+    g = Game()
+    if difficulty == "easy":
+        g.max_turns = 30
+        g.stability = 70
+    elif difficulty == "hard":
+        g.max_turns = 16
+        g.stability = 60
+        g.collapse = 50
+    # else normal defaults
 
-@app.route('/choose_path/<path>')
-def choose_path(path='preservation'):
-    """Set victory path preference and redirect to game"""
-    session['preferred_path'] = path
-    return redirect(url_for('game'))
+    GAMES[_sid()] = g
+    return redirect(url_for("game"))
 
-@app.route('/game')
+
+@app.route("/game")
 def game():
-    """Main game interface"""
-    game = get_game()
+    g = _game()
+    return render_template("game.html", state=g.to_dict())
 
-    if game.game_over:
-        return redirect(url_for('victory'))
 
-    return render_template('game.html', game=game)
+@app.post("/action")
+def action():
+    g = _game()
+    a = request.form.get("type", "")
 
-@app.route('/action/<action_name>', methods=['POST'])
-def action(action_name):
-    """Handle player actions"""
-    game = get_game()
-    game.clear_messages()
-
+    # NOTE: every action returns True/False to indicate success;
+    # we DO NOT advance the turn here.
     success = False
 
-    # Direct actions
-    # HARVEST IS FREE - doesn't advance turn
-    if action_name == 'harvest':
-        success = game.harvest()
-    # All other actions cost the turn (handled in end_turn route)
-    elif action_name == 'gather_timber':
-        success = game.gather_timber()
-    elif action_name == 'fortify':
-        success = game.fortify()
+    if a == "harvest":
+        success = g.harvest_free()
+    elif a == "gather_timber":
+        success = g.gather_timber()
+    elif a == "fortify":
+        success = g.fortify()
+    elif a == "withdraw":
+        success = g.withdraw_support()
+    elif a == "research_ib":
+        success = g.research_imperial_bureaucracy()
+    elif a == "build_mine":
+        success = g.build_bronze_mine()
+    else:
+        g._log("Action cancelled.", "secondary")
+        success = False  # never advance on cancel
 
-    # Building actions
-    elif action_name == 'build_bronze_mine':
-        success = game.build_bronze_mine()
-    elif action_name == 'build_granary':
-        success = game.build_granary()
-    elif action_name == 'build_barracks':
-        success = game.build_barracks()
-    elif action_name == 'build_palace':
-        success = game.build_palace()
-    elif action_name == 'build_lighthouse':
-        success = game.build_lighthouse()
-    elif action_name == 'build_watchtower':
-        success = game.build_watchtower()
+    return redirect(url_for("game"))
 
-    # Research actions
-    elif action_name == 'research_imperial_bureaucracy':
-        success = game.research_imperial_bureaucracy()
-    elif action_name == 'research_tin_trade_routes':
-        success = game.research_tin_trade_routes()
-    elif action_name == 'research_phalanx_formation':
-        success = game.research_phalanx_formation()
-    elif action_name == 'research_diplomatic_marriage':
-        success = game.research_diplomatic_marriage()
 
-    # Diplomacy actions
-    elif action_name == 'send_tribute':
-        target = request.form.get('target', 'egypt')  # Get target from form, default to egypt
-        success = game.send_tribute(target=target)
-    elif action_name == 'form_alliance':
-        success = game.form_alliance()
-    elif action_name == 'host_festival':
-        success = game.host_festival()
+@app.post("/end_turn")
+def end_turn():
+    g = _game()
+    # End turn ONLY if both action flags used; otherwise stay on same turn.
+    if not g.end_turn():
+        # messages already added by can_end_turn(); just re-render
+        return redirect(url_for("game"))
 
-    # Withdraw action
-    elif action_name == 'withdraw':
-        success = game.withdraw_from_alliance()
+    # Check victory/defeat
+    if g.turn > g.max_turns and g.collapse >= 80 and g.military >= 50:
+        # Vacuum victory
+        session["victory"] = {"type": "vacuum", "final": g.to_dict()}
+        return redirect(url_for("victory"))
+    if g.stability <= 0 or g.military <= 0:
+        session["victory"] = {"type": "defeat", "final": g.to_dict()}
+        return redirect(url_for("victory"))
+    if g.collapse == 0:
+        session["victory"] = {"type": "preservation", "final": g.to_dict()}
+        return redirect(url_for("victory"))
 
-    # DO NOT auto-advance turn anymore
-    # Player must click "End Turn" button
+    return redirect(url_for("game"))
 
-    save_game(game)
 
-    # Return JSON for AJAX updates
-    if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
-        return jsonify({
-            'success': success,
-            'game_over': game.game_over,
-            'messages': game.message_log,
-            'game': game.to_dict()
-        })
-
-    return redirect(url_for('game'))
-
-@app.route('/end_turn', methods=['POST'])
-def end_turn_route():
-    """End the current turn"""
-    game = get_game()
-    game.clear_messages()
-
-    # Process end-of-turn
-    game.end_turn()
-
-    save_game(game)
-    return redirect(url_for('game'))
-
-@app.route('/victory')
+@app.get("/victory")
 def victory():
-    """Victory/defeat screen"""
-    game = get_game()
-    return render_template('victory.html', game=game)
+    data = session.get("victory")
+    if not data:
+        return redirect(url_for("game"))
+    return render_template("victory.html", result=data)
 
-@app.route('/api/game_state')
-def api_game_state():
-    """API endpoint for game state"""
-    game = get_game()
-    return jsonify(game.to_dict())
 
-if __name__ == '__main__':
-    app.run(debug=True, host='0.0.0.0', port=5000)
+if __name__ == "__main__":
+    app.run(debug=True)
