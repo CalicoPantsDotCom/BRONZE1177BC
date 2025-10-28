@@ -26,7 +26,7 @@ def _sid() -> str:
             logger.info(f"Created new session: {sid}")
         return sid
     except Exception as e:
-        logger.error(f"Error in _sid: {e}")
+        logger.error(f"Error in _sid: {e}", exc_info=True)
         # Create fallback session ID
         sid = str(uuid4())
         session["sid"] = sid
@@ -109,15 +109,8 @@ def game():
         return render_template("game.html", game=g.to_dict())
     except Exception as e:
         logger.error(f"Error in game route: {e}", exc_info=True)
-        # Try to create a new game
-        try:
-            sid = _sid()
-            GAMES[sid] = Game()
-            g = GAMES[sid]
-            return render_template("game.html", game=g.to_dict())
-        except Exception as e2:
-            logger.error(f"Failed to recover from error: {e2}", exc_info=True)
-            return redirect(url_for("index"))
+        # Redirect to index on error - user can start a new game
+        return redirect(url_for("index"))
 
 
 @app.post("/action")

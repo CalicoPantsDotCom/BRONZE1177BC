@@ -93,13 +93,13 @@ class Game:
         """Validate game state after initialization"""
         try:
             logger.info("Initializing new Game instance")
-            # Validate initial state
+            # Validate initial state (using object.__setattr__ for dataclass fields)
             if self.turn < 1:
                 logger.warning("Turn was less than 1, resetting to 1")
-                self.turn = 1
+                object.__setattr__(self, 'turn', 1)
             if self.max_turns < 1:
                 logger.warning("max_turns was less than 1, resetting to 20")
-                self.max_turns = 20
+                object.__setattr__(self, 'max_turns', 20)
             logger.info(f"Game initialized: turn {self.turn}/{self.max_turns}")
         except Exception as e:
             logger.error(f"Error in Game.__post_init__: {e}", exc_info=True)
