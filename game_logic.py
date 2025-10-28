@@ -24,7 +24,7 @@ def clamp(v: int, lo: int = 0, hi: int = 100) -> int:
 @dataclass
 class TurnSummary:
     turn_number: int
-    actions: List[str] = field(default_factory=list)
+    actions: List[Dict[str, str]] = field(default_factory=list)
     events: List[str] = field(default_factory=list)
     income: List[str] = field(default_factory=list)
     drift: List[str] = field(default_factory=list)
@@ -109,6 +109,8 @@ class Game:
             if self.max_turns < 1:
                 logger.warning("max_turns was less than 1, resetting to 20")
                 object.__setattr__(self, 'max_turns', 20)
+            # Initialize turn summary at game start
+            self._start_turn_summary()
             logger.info(f"Game initialized: turn {self.turn}/{self.max_turns}")
         except Exception as e:
             logger.error(f"Error in Game.__post_init__: {e}", exc_info=True)
@@ -127,10 +129,11 @@ class Game:
     def _start_turn_summary(self) -> None:
         self.previous_turn_summary = TurnSummary(turn_number=self.turn)
 
-    def _add_action_summary(self, line: str) -> None:
+    def _add_action_summary(self, name: str, effects: str) -> None:
+        """Add an action to the turn summary with name and effects"""
         if not self.previous_turn_summary or self.previous_turn_summary.turn_number != self.turn:
             self._start_turn_summary()
-        self.previous_turn_summary.actions.append(line)
+        self.previous_turn_summary.actions.append({"name": name, "effects": effects})
     
     def _add_current_turn_action(self, name: str, effects: str) -> None:
         """Add an action to the current turn tracking"""
@@ -190,7 +193,7 @@ class Game:
             self._log("You already took the free Harvest this turn.", "warning")
             return False
         detail = self._apply(d_grain=+15, d_bronze=+10)
-        self._add_action_summary(f"Harvest: {detail}")
+        self._add_action_summary("Harvest", detail)
         self._add_current_turn_action("Harvest", "+15 Grain, +10 Bronze")
         self.free_harvest_used = True
         self._log("✓ Harvested! +15 Grain, +10 Bronze", "success")
@@ -205,7 +208,7 @@ class Game:
             self._log("✗ Not enough Grain (need 8) to Gather Timber.", "danger")
             return False
         detail = self._apply(d_grain=-8, d_timber=+10)
-        self._add_action_summary(f"Gather Timber: {detail}")
+        self._add_action_summary("Gather Timber", detail)
         self._add_current_turn_action("Gather Timber", "-8 Grain, +10 Timber")
         self.paid_action_used = True
         self._log("✓ Gathered Timber! -8 Grain, +10 Timber", "success")
@@ -219,7 +222,7 @@ class Game:
             self._log("✗ Not enough Bronze (need 10) to Fortify.", "danger")
             return False
         detail = self._apply(d_bronze=-10, d_mil=+8)
-        self._add_action_summary(f"Fortify Defenses: {detail}")
+        self._add_action_summary("Fortify Defenses", detail)
         self._add_current_turn_action("Fortify Defenses", "-10 Bronze, +8 Military")
         self.paid_action_used = True
         self._log("✓ Defenses fortified! -10 Bronze, +8 Military", "success")
@@ -237,7 +240,8 @@ class Game:
             return False
         detail = self._apply(d_stab=-10, d_col=+15)
         self.withdrawals_used += 1
-        self._add_action_summary(f"Withdraw Support: {detail}")
+        self._add_action_summary("Withdraw Support", detail)
+        self._add_current_turn_action("Withdraw Support", "-10 Stability, +15 Collapse")
         self.paid_action_used = True
         self._log(f"⚠️ Support withdrawn ({self.max_withdrawals - self.withdrawals_used} left). +15 Collapse, -10 Stability", "danger")
         return True
@@ -251,9 +255,10 @@ class Game:
         if self.knowledge < 15 or self.grain < 20:
             self._log("✗ Insufficient resources for Imperial Bureaucracy.", "danger")
             return False
-        self._apply(d_know=-15, d_grain=-20, d_elast=+10)
+        detail = self._apply(d_know=-15, d_grain=-20, d_elast=+10)
         self.tech_imperial_bureaucracy = True
-        self._add_action_summary("Researched Imperial Bureaucracy")
+        self._add_action_summary("Researched Imperial Bureaucracy", detail)
+        self._add_current_turn_action("Researched Imperial Bureaucracy", "-15 Knowledge, -20 Grain, +10 Elasticity")
         self.paid_action_used = True
         self._log("✓ Researched Imperial Bureaucracy! Stability losses reduced 25%.", "success")
         return True
@@ -265,9 +270,10 @@ class Game:
         if self.timber < 20 or self.grain < 15:
             self._log("✗ Not enough Timber (20) and Grain (15) to build Bronze Mine.", "danger")
             return False
-        self._apply(d_timber=-20, d_grain=-15)
+        detail = self._apply(d_timber=-20, d_grain=-15)
         self.has_bronze_mine = True
-        self._add_action_summary("Built Bronze Mine: +3 Bronze / turn")
+        self._add_action_summary("Built Bronze Mine", f"{detail} → +3 Bronze/turn")
+        self._add_current_turn_action("Built Bronze Mine", "-20 Timber, -15 Grain → +3 Bronze/turn")
         self.paid_action_used = True
         self._log("✓ Bronze Mine built! +3 Bronze each turn.", "success")
         return True
@@ -282,9 +288,10 @@ class Game:
         if self.timber < 15 or self.grain < 20:
             self._log("✗ Not enough Timber (15) and Grain (20) to build Granary.", "danger")
             return False
-        self._apply(d_timber=-15, d_grain=-20)
+        detail = self._apply(d_timber=-15, d_grain=-20)
         self.has_granary = True
-        self._add_action_summary("Built Granary: +5 Grain / turn")
+        self._add_action_summary("Built Granary", f"{detail} → +5 Grain/turn")
+        self._add_current_turn_action("Built Granary", "-15 Timber, -20 Grain → +5 Grain/turn")
         self.paid_action_used = True
         self._log("✓ Granary built! +5 Grain each turn.", "success")
         return True
@@ -299,9 +306,10 @@ class Game:
         if self.timber < 20 or self.grain < 25 or self.bronze < 10:
             self._log("✗ Not enough Timber (20), Grain (25), and Bronze (10) to build Barracks.", "danger")
             return False
-        self._apply(d_timber=-20, d_grain=-25, d_bronze=-10, d_mil=+15)
+        detail = self._apply(d_timber=-20, d_grain=-25, d_bronze=-10, d_mil=+15)
         self.has_barracks = True
-        self._add_action_summary("Built Barracks: +15 Military")
+        self._add_action_summary("Built Barracks", detail)
+        self._add_current_turn_action("Built Barracks", "-20 Timber, -25 Grain, -10 Bronze, +15 Military")
         self.paid_action_used = True
         self._log("✓ Barracks built! +15 Military.", "success")
         return True
@@ -316,9 +324,10 @@ class Game:
         if self.timber < 25 or self.grain < 30 or self.bronze < 15:
             self._log("✗ Not enough Timber (25), Grain (30), and Bronze (15) to build Palace.", "danger")
             return False
-        self._apply(d_timber=-25, d_grain=-30, d_bronze=-15, d_prestige=+20, d_stab=+10)
+        detail = self._apply(d_timber=-25, d_grain=-30, d_bronze=-15, d_prestige=+20, d_stab=+10)
         self.has_palace = True
-        self._add_action_summary("Built Palace: +20 Prestige, +10 Stability")
+        self._add_action_summary("Built Palace", detail)
+        self._add_current_turn_action("Built Palace", "-25 Timber, -30 Grain, -15 Bronze, +20 Prestige, +10 Stability")
         self.paid_action_used = True
         self._log("✓ Palace built! +20 Prestige, +10 Stability.", "success")
         return True
@@ -333,9 +342,10 @@ class Game:
         if self.timber < 20 or self.grain < 20:
             self._log("✗ Not enough Timber (20) and Grain (20) to build Lighthouse.", "danger")
             return False
-        self._apply(d_timber=-20, d_grain=-20, d_prestige=+10, d_col=-3)
+        detail = self._apply(d_timber=-20, d_grain=-20, d_prestige=+10, d_col=-3)
         self.has_lighthouse = True
-        self._add_action_summary("Built Lighthouse: +10 Prestige, -3 Collapse")
+        self._add_action_summary("Built Lighthouse", detail)
+        self._add_current_turn_action("Built Lighthouse", "-20 Timber, -20 Grain, +10 Prestige, -3 Collapse")
         self.paid_action_used = True
         self._log("✓ Lighthouse built! +10 Prestige, -3 Collapse.", "success")
         return True
@@ -350,9 +360,10 @@ class Game:
         if self.timber < 15 or self.grain < 15:
             self._log("✗ Not enough Timber (15) and Grain (15) to build Watchtower.", "danger")
             return False
-        self._apply(d_timber=-15, d_grain=-15, d_mil=+10)
+        detail = self._apply(d_timber=-15, d_grain=-15, d_mil=+10)
         self.has_watchtower = True
-        self._add_action_summary("Built Watchtower: +10 Military")
+        self._add_action_summary("Built Watchtower", detail)
+        self._add_current_turn_action("Built Watchtower", "-15 Timber, -15 Grain, +10 Military")
         self.paid_action_used = True
         self._log("✓ Watchtower built! +10 Military.", "success")
         return True
@@ -367,9 +378,10 @@ class Game:
         if self.grain < 25 or self.bronze < 15:
             self._log("✗ Not enough Grain (25) and Bronze (15) for Tin Trade Routes.", "danger")
             return False
-        self._apply(d_grain=-25, d_bronze=-15, d_prestige=+10, d_col=-2)
+        detail = self._apply(d_grain=-25, d_bronze=-15, d_prestige=+10, d_col=-2)
         self.tech_tin_trade_routes = True
-        self._add_action_summary("Researched Tin Trade Routes")
+        self._add_action_summary("Researched Tin Trade Routes", detail)
+        self._add_current_turn_action("Researched Tin Trade Routes", "-25 Grain, -15 Bronze, +10 Prestige, -2 Collapse")
         self.paid_action_used = True
         self._log("✓ Researched Tin Trade Routes! +10 Prestige, -2 Collapse.", "success")
         return True
@@ -384,9 +396,10 @@ class Game:
         if self.bronze < 20 or self.military < 25:
             self._log("✗ Not enough Bronze (20) and Military (25) for Phalanx Formation.", "danger")
             return False
-        self._apply(d_bronze=-20, d_mil=+15)
+        detail = self._apply(d_bronze=-20, d_mil=+15)
         self.tech_phalanx_formation = True
-        self._add_action_summary("Researched Phalanx Formation")
+        self._add_action_summary("Researched Phalanx Formation", detail)
+        self._add_current_turn_action("Researched Phalanx Formation", "-20 Bronze, +15 Military")
         self.paid_action_used = True
         self._log("✓ Researched Phalanx Formation! +15 Military.", "success")
         return True
@@ -401,9 +414,10 @@ class Game:
         if self.prestige < 30:
             self._log("✗ Not enough Prestige (30) for Diplomatic Marriage.", "danger")
             return False
-        self._apply(d_prestige=-30, d_stab=+15, d_col=-5)
+        detail = self._apply(d_prestige=-30, d_stab=+15, d_col=-5)
         self.tech_diplomatic_marriage = True
-        self._add_action_summary("Researched Diplomatic Marriage")
+        self._add_action_summary("Researched Diplomatic Marriage", detail)
+        self._add_current_turn_action("Researched Diplomatic Marriage", "-30 Prestige, +15 Stability, -5 Collapse")
         self.paid_action_used = True
         self._log("✓ Researched Diplomatic Marriage! +15 Stability, -5 Collapse.", "success")
         return True
@@ -415,8 +429,9 @@ class Game:
         if self.grain < 15 or self.bronze < 10:
             self._log("✗ Not enough Grain (15) and Bronze (10) to send tribute.", "danger")
             return False
-        self._apply(d_grain=-15, d_bronze=-10, d_prestige=+5, d_col=-3)
-        self._add_action_summary(f"Sent tribute to {target.capitalize()}")
+        detail = self._apply(d_grain=-15, d_bronze=-10, d_prestige=+5, d_col=-3)
+        self._add_action_summary(f"Sent tribute to {target.capitalize()}", detail)
+        self._add_current_turn_action(f"Sent tribute to {target.capitalize()}", "-15 Grain, -10 Bronze, +5 Prestige, -3 Collapse")
         self.paid_action_used = True
         self._log(f"✓ Tribute sent to {target.capitalize()}! +5 Prestige, -3 Collapse.", "success")
         return True
@@ -428,8 +443,9 @@ class Game:
         if self.prestige < 15:
             self._log("✗ Not enough Prestige (15) to form alliance.", "danger")
             return False
-        self._apply(d_prestige=-15, d_stab=+8, d_mil=+5, d_col=-4)
-        self._add_action_summary("Formed Alliance")
+        detail = self._apply(d_prestige=-15, d_stab=+8, d_mil=+5, d_col=-4)
+        self._add_action_summary("Formed Alliance", detail)
+        self._add_current_turn_action("Formed Alliance", "-15 Prestige, +8 Stability, +5 Military, -4 Collapse")
         self.paid_action_used = True
         self._log("✓ Alliance formed! +8 Stability, +5 Military, -4 Collapse.", "success")
         return True
@@ -441,8 +457,9 @@ class Game:
         if self.grain < 20:
             self._log("✗ Not enough Grain (20) to host festival.", "danger")
             return False
-        self._apply(d_grain=-20, d_stab=+10, d_prestige=+8)
-        self._add_action_summary("Hosted Festival")
+        detail = self._apply(d_grain=-20, d_stab=+10, d_prestige=+8)
+        self._add_action_summary("Hosted Festival", detail)
+        self._add_current_turn_action("Hosted Festival", "-20 Grain, +10 Stability, +8 Prestige")
         self.paid_action_used = True
         self._log("✓ Festival hosted! +10 Stability, +8 Prestige.", "success")
         return True
