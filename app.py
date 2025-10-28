@@ -81,6 +81,17 @@ def action():
     return redirect(url_for("game"))
 
 
+@app.post("/choice")
+def choice():
+    g = _game()
+    choice_value = request.form.get("choice", "")
+    
+    if choice_value in ["a", "b"]:
+        g.resolve_choice(choice_value)
+    
+    return redirect(url_for("game"))
+
+
 @app.post("/end_turn")
 def end_turn():
     g = _game()
