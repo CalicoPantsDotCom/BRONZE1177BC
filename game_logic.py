@@ -67,12 +67,19 @@ class Game:
     tech_alphabetic_script: bool = False
     tech_ironworking: bool = False
     tech_diplomatic_protocols: bool = False
+    tech_tin_trade_routes: bool = False
+    tech_phalanx_formation: bool = False
+    tech_diplomatic_marriage: bool = False
 
     # Build flags
     has_granary: bool = False
     has_library: bool = False
     has_walls: bool = False
     has_bronze_mine: bool = False
+    has_barracks: bool = False
+    has_palace: bool = False
+    has_lighthouse: bool = False
+    has_watchtower: bool = False
 
     # Per-turn economy: FREE harvest + ONE paid action
     free_harvest_used: bool = False
@@ -253,6 +260,181 @@ class Game:
         self._add_action_summary("Built Bronze Mine: +3 Bronze / turn")
         self.paid_action_used = True
         self._log("✓ Bronze Mine built! +3 Bronze each turn.", "success")
+        return True
+
+    def build_granary(self) -> bool:
+        if self.paid_action_used:
+            self._log("You already used your paid action this turn.", "warning")
+            return False
+        if self.has_granary:
+            self._log("✗ Granary already built.", "warning")
+            return False
+        if self.timber < 15 or self.grain < 20:
+            self._log("✗ Not enough Timber (15) and Grain (20) to build Granary.", "danger")
+            return False
+        self._apply(d_timber=-15, d_grain=-20)
+        self.has_granary = True
+        self._add_action_summary("Built Granary: +5 Grain / turn")
+        self.paid_action_used = True
+        self._log("✓ Granary built! +5 Grain each turn.", "success")
+        return True
+
+    def build_barracks(self) -> bool:
+        if self.paid_action_used:
+            self._log("You already used your paid action this turn.", "warning")
+            return False
+        if self.has_barracks:
+            self._log("✗ Barracks already built.", "warning")
+            return False
+        if self.timber < 20 or self.grain < 25 or self.bronze < 10:
+            self._log("✗ Not enough Timber (20), Grain (25), and Bronze (10) to build Barracks.", "danger")
+            return False
+        self._apply(d_timber=-20, d_grain=-25, d_bronze=-10, d_mil=+15)
+        self.has_barracks = True
+        self._add_action_summary("Built Barracks: +15 Military")
+        self.paid_action_used = True
+        self._log("✓ Barracks built! +15 Military.", "success")
+        return True
+
+    def build_palace(self) -> bool:
+        if self.paid_action_used:
+            self._log("You already used your paid action this turn.", "warning")
+            return False
+        if self.has_palace:
+            self._log("✗ Palace already built.", "warning")
+            return False
+        if self.timber < 25 or self.grain < 30 or self.bronze < 15:
+            self._log("✗ Not enough Timber (25), Grain (30), and Bronze (15) to build Palace.", "danger")
+            return False
+        self._apply(d_timber=-25, d_grain=-30, d_bronze=-15, d_prestige=+20, d_stab=+10)
+        self.has_palace = True
+        self._add_action_summary("Built Palace: +20 Prestige, +10 Stability")
+        self.paid_action_used = True
+        self._log("✓ Palace built! +20 Prestige, +10 Stability.", "success")
+        return True
+
+    def build_lighthouse(self) -> bool:
+        if self.paid_action_used:
+            self._log("You already used your paid action this turn.", "warning")
+            return False
+        if self.has_lighthouse:
+            self._log("✗ Lighthouse already built.", "warning")
+            return False
+        if self.timber < 20 or self.grain < 20:
+            self._log("✗ Not enough Timber (20) and Grain (20) to build Lighthouse.", "danger")
+            return False
+        self._apply(d_timber=-20, d_grain=-20, d_prestige=+10, d_col=-3)
+        self.has_lighthouse = True
+        self._add_action_summary("Built Lighthouse: +10 Prestige, -3 Collapse")
+        self.paid_action_used = True
+        self._log("✓ Lighthouse built! +10 Prestige, -3 Collapse.", "success")
+        return True
+
+    def build_watchtower(self) -> bool:
+        if self.paid_action_used:
+            self._log("You already used your paid action this turn.", "warning")
+            return False
+        if self.has_watchtower:
+            self._log("✗ Watchtower already built.", "warning")
+            return False
+        if self.timber < 15 or self.grain < 15:
+            self._log("✗ Not enough Timber (15) and Grain (15) to build Watchtower.", "danger")
+            return False
+        self._apply(d_timber=-15, d_grain=-15, d_mil=+10)
+        self.has_watchtower = True
+        self._add_action_summary("Built Watchtower: +10 Military")
+        self.paid_action_used = True
+        self._log("✓ Watchtower built! +10 Military.", "success")
+        return True
+
+    def research_tin_trade_routes(self) -> bool:
+        if self.paid_action_used:
+            self._log("You already used your paid action this turn.", "warning")
+            return False
+        if self.tech_tin_trade_routes:
+            self._log("✗ Tin Trade Routes already researched.", "warning")
+            return False
+        if self.grain < 25 or self.bronze < 15:
+            self._log("✗ Not enough Grain (25) and Bronze (15) for Tin Trade Routes.", "danger")
+            return False
+        self._apply(d_grain=-25, d_bronze=-15, d_prestige=+10, d_col=-2)
+        self.tech_tin_trade_routes = True
+        self._add_action_summary("Researched Tin Trade Routes")
+        self.paid_action_used = True
+        self._log("✓ Researched Tin Trade Routes! +10 Prestige, -2 Collapse.", "success")
+        return True
+
+    def research_phalanx_formation(self) -> bool:
+        if self.paid_action_used:
+            self._log("You already used your paid action this turn.", "warning")
+            return False
+        if self.tech_phalanx_formation:
+            self._log("✗ Phalanx Formation already researched.", "warning")
+            return False
+        if self.bronze < 20 or self.military < 25:
+            self._log("✗ Not enough Bronze (20) and Military (25) for Phalanx Formation.", "danger")
+            return False
+        self._apply(d_bronze=-20, d_mil=+15)
+        self.tech_phalanx_formation = True
+        self._add_action_summary("Researched Phalanx Formation")
+        self.paid_action_used = True
+        self._log("✓ Researched Phalanx Formation! +15 Military.", "success")
+        return True
+
+    def research_diplomatic_marriage(self) -> bool:
+        if self.paid_action_used:
+            self._log("You already used your paid action this turn.", "warning")
+            return False
+        if self.tech_diplomatic_marriage:
+            self._log("✗ Diplomatic Marriage already researched.", "warning")
+            return False
+        if self.prestige < 30:
+            self._log("✗ Not enough Prestige (30) for Diplomatic Marriage.", "danger")
+            return False
+        self._apply(d_prestige=-30, d_stab=+15, d_col=-5)
+        self.tech_diplomatic_marriage = True
+        self._add_action_summary("Researched Diplomatic Marriage")
+        self.paid_action_used = True
+        self._log("✓ Researched Diplomatic Marriage! +15 Stability, -5 Collapse.", "success")
+        return True
+
+    def send_tribute(self, target: str) -> bool:
+        if self.paid_action_used:
+            self._log("You already used your paid action this turn.", "warning")
+            return False
+        if self.grain < 15 or self.bronze < 10:
+            self._log("✗ Not enough Grain (15) and Bronze (10) to send tribute.", "danger")
+            return False
+        self._apply(d_grain=-15, d_bronze=-10, d_prestige=+5, d_col=-3)
+        self._add_action_summary(f"Sent tribute to {target.capitalize()}")
+        self.paid_action_used = True
+        self._log(f"✓ Tribute sent to {target.capitalize()}! +5 Prestige, -3 Collapse.", "success")
+        return True
+
+    def form_alliance(self) -> bool:
+        if self.paid_action_used:
+            self._log("You already used your paid action this turn.", "warning")
+            return False
+        if self.prestige < 15:
+            self._log("✗ Not enough Prestige (15) to form alliance.", "danger")
+            return False
+        self._apply(d_prestige=-15, d_stab=+8, d_mil=+5, d_col=-4)
+        self._add_action_summary("Formed Alliance")
+        self.paid_action_used = True
+        self._log("✓ Alliance formed! +8 Stability, +5 Military, -4 Collapse.", "success")
+        return True
+
+    def host_festival(self) -> bool:
+        if self.paid_action_used:
+            self._log("You already used your paid action this turn.", "warning")
+            return False
+        if self.grain < 20:
+            self._log("✗ Not enough Grain (20) to host festival.", "danger")
+            return False
+        self._apply(d_grain=-20, d_stab=+10, d_prestige=+8)
+        self._add_action_summary("Hosted Festival")
+        self.paid_action_used = True
+        self._log("✓ Festival hosted! +10 Stability, +8 Prestige.", "success")
         return True
 
     # ------------------------
@@ -492,12 +674,19 @@ class Game:
                     "alphabetic_script": self.tech_alphabetic_script,
                     "ironworking": self.tech_ironworking,
                     "diplomatic_protocols": self.tech_diplomatic_protocols,
+                    "tin_trade_routes": self.tech_tin_trade_routes,
+                    "phalanx_formation": self.tech_phalanx_formation,
+                    "diplomatic_marriage": self.tech_diplomatic_marriage,
                 },
                 "builds": {
                     "granary": self.has_granary,
                     "library": self.has_library,
                     "walls": self.has_walls,
                     "bronze_mine": self.has_bronze_mine,
+                    "barracks": self.has_barracks,
+                    "palace": self.has_palace,
+                    "lighthouse": self.has_lighthouse,
+                    "watchtower": self.has_watchtower,
                 },
                 "message_log": self.message_log[-8:],  # show latest few
                 "previous_turn_summary": (self.previous_turn_summary.__dict__

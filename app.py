@@ -125,6 +125,7 @@ def action():
         # we DO NOT advance the turn here.
         success = False
 
+        # Basic actions
         if a == "harvest":
             success = g.harvest_free()
         elif a == "gather_timber":
@@ -133,10 +134,36 @@ def action():
             success = g.fortify()
         elif a == "withdraw":
             success = g.withdraw_support()
+        # Research
         elif a == "research_ib":
             success = g.research_imperial_bureaucracy()
+        elif a == "research_tin_trade":
+            success = g.research_tin_trade_routes()
+        elif a == "research_phalanx":
+            success = g.research_phalanx_formation()
+        elif a == "research_marriage":
+            success = g.research_diplomatic_marriage()
+        # Buildings
         elif a == "build_mine":
             success = g.build_bronze_mine()
+        elif a == "build_granary":
+            success = g.build_granary()
+        elif a == "build_barracks":
+            success = g.build_barracks()
+        elif a == "build_palace":
+            success = g.build_palace()
+        elif a == "build_lighthouse":
+            success = g.build_lighthouse()
+        elif a == "build_watchtower":
+            success = g.build_watchtower()
+        # Diplomacy
+        elif a == "send_tribute":
+            target = request.form.get("target", "egypt")
+            success = g.send_tribute(target)
+        elif a == "form_alliance":
+            success = g.form_alliance()
+        elif a == "host_festival":
+            success = g.host_festival()
         else:
             g._log("Action cancelled.", "secondary")
             success = False  # never advance on cancel
