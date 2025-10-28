@@ -186,6 +186,30 @@ def choice():
         if choice_value in ["a", "b"]:
             g.resolve_choice(choice_value)
             logger.info(f"Choice {choice_value} resolved successfully")
+            
+            # Auto-advance turn if both actions are complete
+            if g.free_harvest_used and g.paid_action_used:
+                logger.info("Both actions complete after choice - auto-advancing turn")
+                if g.end_turn():
+                    logger.info(f"Turn auto-advanced to {g.turn}")
+                    
+                    # Check for victory/defeat conditions after auto-advance
+                    if g.turn > g.max_turns and g.collapse >= 80 and g.military >= 50:
+                        logger.info("Vacuum victory achieved after choice")
+                        session["victory"] = {"type": "vacuum", "final": g.to_dict()}
+                        return redirect(url_for("victory"))
+                    if g.stability <= 0:
+                        logger.info("Defeat: Stability collapsed to 0")
+                        session["victory"] = {"type": "defeat", "reason": "stability", "final": g.to_dict()}
+                        return redirect(url_for("victory"))
+                    if g.military <= 0:
+                        logger.info("Defeat: Military collapsed to 0")
+                        session["victory"] = {"type": "defeat", "reason": "military", "final": g.to_dict()}
+                        return redirect(url_for("victory"))
+                    if g.collapse == 0:
+                        logger.info("Preservation victory achieved after choice")
+                        session["victory"] = {"type": "preservation", "final": g.to_dict()}
+                        return redirect(url_for("victory"))
         else:
             logger.warning(f"Invalid choice value: {choice_value}")
 
@@ -210,16 +234,23 @@ def end_turn():
 
         logger.info(f"Turn {g.turn - 1} ended successfully, now on turn {g.turn}")
 
-        # Check victory/defeat
+        # Check victory/defeat conditions with better separation
         if g.turn > g.max_turns and g.collapse >= 80 and g.military >= 50:
             # Vacuum victory
             logger.info("Vacuum victory achieved")
             session["victory"] = {"type": "vacuum", "final": g.to_dict()}
             return redirect(url_for("victory"))
-        if g.stability <= 0 or g.military <= 0:
-            logger.info("Defeat condition met")
-            session["victory"] = {"type": "defeat", "final": g.to_dict()}
+        
+        # Separate defeat conditions for better handling
+        if g.stability <= 0:
+            logger.info("Defeat: Stability collapsed to 0")
+            session["victory"] = {"type": "defeat", "reason": "stability", "final": g.to_dict()}
             return redirect(url_for("victory"))
+        if g.military <= 0:
+            logger.info("Defeat: Military collapsed to 0")
+            session["victory"] = {"type": "defeat", "reason": "military", "final": g.to_dict()}
+            return redirect(url_for("victory"))
+        
         if g.collapse == 0:
             logger.info("Preservation victory achieved")
             session["victory"] = {"type": "preservation", "final": g.to_dict()}
