@@ -9,7 +9,11 @@
 from __future__ import annotations
 from dataclasses import dataclass, field
 import random
+import logging
 from typing import Dict, List, Optional
+
+# Configure logging
+logger = logging.getLogger(__name__)
 
 
 def clamp(v: int, lo: int = 0, hi: int = 100) -> int:
@@ -54,6 +58,7 @@ class Game:
     turn: int = 1
     max_turns: int = 20
     drift_per_turn: int = 3
+    difficulty: str = "normal"  # Track difficulty level
 
     # Tech/build flags (simple booleans so UI can reflect state)
     tech_imperial_bureaucracy: bool = False
@@ -83,12 +88,32 @@ class Game:
 
     # Choice events
     pending_choice: Optional[ChoiceEvent] = None
+    
+    def __post_init__(self):
+        """Validate game state after initialization"""
+        try:
+            logger.info("Initializing new Game instance")
+            # Validate initial state (using object.__setattr__ for dataclass fields)
+            if self.turn < 1:
+                logger.warning("Turn was less than 1, resetting to 1")
+                object.__setattr__(self, 'turn', 1)
+            if self.max_turns < 1:
+                logger.warning("max_turns was less than 1, resetting to 20")
+                object.__setattr__(self, 'max_turns', 20)
+            logger.info(f"Game initialized: turn {self.turn}/{self.max_turns}")
+        except Exception as e:
+            logger.error(f"Error in Game.__post_init__: {e}", exc_info=True)
 
     # ------------------------
     # Utility / logging
     # ------------------------
     def _log(self, text: str, level: str = "info") -> None:
-        self.message_log.append({"type": level, "text": text})
+        """Add a message to the game log"""
+        try:
+            self.message_log.append({"type": level, "text": text})
+            logger.debug(f"Game log [{level}]: {text}")
+        except Exception as e:
+            logger.error(f"Error in _log: {e}", exc_info=True)
 
     def _start_turn_summary(self) -> None:
         self.previous_turn_summary = TurnSummary(turn_number=self.turn)
@@ -345,55 +370,63 @@ class Game:
 
     def resolve_choice(self, choice: str) -> bool:
         """Handle player's choice for a pending choice event"""
-        if not self.pending_choice:
-            return False
+        try:
+            if not self.pending_choice:
+                logger.warning("resolve_choice called with no pending choice")
+                return False
 
-        event_id = self.pending_choice.event_id
-        
-        if event_id == "vassal_aid":
-            if choice == "a":
-                if self.grain < 20:
-                    self._log("Insufficient Grain to send aid!", "danger")
-                    return False
-                self.grain -= 20
-                self._apply(d_prestige=+8, d_stab=+5, d_col=-2)
-                self._log(f"✓ {self.pending_choice.choice_a_label}: {self.pending_choice.choice_a_effects}", "success")
-                self._add_event_summary(f"CHOICE: {self.pending_choice.title} → Sent Aid")
-            else:
-                self._apply(d_prestige=-10, d_stab=-8, d_col=+3)
-                self._log(f"✓ {self.pending_choice.choice_b_label}: {self.pending_choice.choice_b_effects}", "warning")
-                self._add_event_summary(f"CHOICE: {self.pending_choice.title} → Refused")
-        
-        elif event_id == "hittite_trade":
-            if choice == "a":
-                if self.timber < 15:
-                    self._log("Insufficient Timber for trade!", "danger")
-                    return False
-                self.timber -= 15
-                self._apply(d_bronze=+12, d_prestige=+5, d_col=-1)
-                self._log(f"✓ {self.pending_choice.choice_a_label}: {self.pending_choice.choice_a_effects}", "success")
-                self._add_event_summary(f"CHOICE: {self.pending_choice.title} → Accepted Trade")
-            else:
-                self._apply(d_prestige=-3)
-                self._log(f"✓ {self.pending_choice.choice_b_label}: {self.pending_choice.choice_b_effects}", "warning")
-                self._add_event_summary(f"CHOICE: {self.pending_choice.title} → Declined")
-        
-        elif event_id == "refugee_crisis":
-            if choice == "a":
-                if self.grain < 12:
-                    self._log("Insufficient Grain to welcome refugees!", "danger")
-                    return False
-                self.grain -= 12
-                self._apply(d_stab=+10, d_mil=+6, d_col=-2)
-                self._log(f"✓ {self.pending_choice.choice_a_label}: {self.pending_choice.choice_a_effects}", "success")
-                self._add_event_summary(f"CHOICE: {self.pending_choice.title} → Welcomed Refugees")
-            else:
-                self._apply(d_stab=-12, d_mil=+3, d_col=+4)
-                self._log(f"✓ {self.pending_choice.choice_b_label}: {self.pending_choice.choice_b_effects}", "warning")
-                self._add_event_summary(f"CHOICE: {self.pending_choice.title} → Turned Away")
-        
-        self.pending_choice = None
-        return True
+            event_id = self.pending_choice.event_id
+            logger.info(f"Resolving choice event {event_id} with choice {choice}")
+            
+            if event_id == "vassal_aid":
+                if choice == "a":
+                    if self.grain < 20:
+                        self._log("Insufficient Grain to send aid!", "danger")
+                        return False
+                    self.grain -= 20
+                    self._apply(d_prestige=+8, d_stab=+5, d_col=-2)
+                    self._log(f"✓ {self.pending_choice.choice_a_label}: {self.pending_choice.choice_a_effects}", "success")
+                    self._add_event_summary(f"CHOICE: {self.pending_choice.title} → Sent Aid")
+                else:
+                    self._apply(d_prestige=-10, d_stab=-8, d_col=+3)
+                    self._log(f"✓ {self.pending_choice.choice_b_label}: {self.pending_choice.choice_b_effects}", "warning")
+                    self._add_event_summary(f"CHOICE: {self.pending_choice.title} → Refused")
+            
+            elif event_id == "hittite_trade":
+                if choice == "a":
+                    if self.timber < 15:
+                        self._log("Insufficient Timber for trade!", "danger")
+                        return False
+                    self.timber -= 15
+                    self._apply(d_bronze=+12, d_prestige=+5, d_col=-1)
+                    self._log(f"✓ {self.pending_choice.choice_a_label}: {self.pending_choice.choice_a_effects}", "success")
+                    self._add_event_summary(f"CHOICE: {self.pending_choice.title} → Accepted Trade")
+                else:
+                    self._apply(d_prestige=-3)
+                    self._log(f"✓ {self.pending_choice.choice_b_label}: {self.pending_choice.choice_b_effects}", "warning")
+                    self._add_event_summary(f"CHOICE: {self.pending_choice.title} → Declined")
+            
+            elif event_id == "refugee_crisis":
+                if choice == "a":
+                    if self.grain < 12:
+                        self._log("Insufficient Grain to welcome refugees!", "danger")
+                        return False
+                    self.grain -= 12
+                    self._apply(d_stab=+10, d_mil=+6, d_col=-2)
+                    self._log(f"✓ {self.pending_choice.choice_a_label}: {self.pending_choice.choice_a_effects}", "success")
+                    self._add_event_summary(f"CHOICE: {self.pending_choice.title} → Welcomed Refugees")
+                else:
+                    self._apply(d_stab=-12, d_mil=+3, d_col=+4)
+                    self._log(f"✓ {self.pending_choice.choice_b_label}: {self.pending_choice.choice_b_effects}", "warning")
+                    self._add_event_summary(f"CHOICE: {self.pending_choice.title} → Turned Away")
+            
+            self.pending_choice = None
+            logger.info("Choice resolved successfully")
+            return True
+        except Exception as e:
+            logger.error(f"Error in resolve_choice: {e}", exc_info=True)
+            self.pending_choice = None
+            return False
 
     def can_end_turn(self) -> bool:
         if not self.free_harvest_used:
@@ -406,56 +439,95 @@ class Game:
 
     def end_turn(self) -> bool:
         """Advance the turn if both action flags were used."""
-        if not self.can_end_turn():
+        try:
+            if not self.can_end_turn():
+                return False
+
+            logger.info(f"Ending turn {self.turn}")
+            
+            self.apply_income()
+            self.resolve_random_event()
+            self.apply_drift()
+
+            self.turn += 1
+            self.free_harvest_used = False
+            self.paid_action_used = False
+            
+            logger.info(f"Turn advanced to {self.turn}")
+            return True
+        except Exception as e:
+            logger.error(f"Error in end_turn: {e}", exc_info=True)
+            # Try to recover by at least resetting the flags
+            self.free_harvest_used = False
+            self.paid_action_used = False
             return False
-
-        self.apply_income()
-        self.resolve_random_event()
-        self.apply_drift()
-
-        self.turn += 1
-        self.free_harvest_used = False
-        self.paid_action_used = False
-
-        return True
 
     # ------------------------
     # Helpers for templates
     # ------------------------
     def to_dict(self) -> Dict:
-        return {
-            "turn": self.turn,
-            "max_turns": self.max_turns,
-            "grain": self.grain,
-            "bronze": self.bronze,
-            "timber": self.timber,
-            "prestige": self.prestige,
-            "stability": self.stability,
-            "knowledge": self.knowledge,
-            "elasticity": self.elasticity,
-            "military": self.military,
-            "collapse": self.collapse,
-            "withdrawals_used": self.withdrawals_used,
-            "max_withdrawals": self.max_withdrawals,
-            "free_harvest_used": self.free_harvest_used,
-            "paid_action_used": self.paid_action_used,
-            "tech": {
-                "imperial_bureaucracy": self.tech_imperial_bureaucracy,
-                "bronze_mines": self.tech_bronze_mines,
-                "granary_network": self.tech_granary_network,
-                "alphabetic_script": self.tech_alphabetic_script,
-                "ironworking": self.tech_ironworking,
-                "diplomatic_protocols": self.tech_diplomatic_protocols,
-            },
-            "builds": {
-                "granary": self.has_granary,
-                "library": self.has_library,
-                "walls": self.has_walls,
-                "bronze_mine": self.has_bronze_mine,
-            },
-            "message_log": self.message_log[-8:],  # show latest few
-            "previous_turn_summary": (self.previous_turn_summary.__dict__
-                                      if self.previous_turn_summary else None),
-            "pending_choice": (self.pending_choice.__dict__
-                              if self.pending_choice else None),
-        }
+        """Convert game state to dictionary for templates"""
+        try:
+            return {
+                "turn": self.turn,
+                "max_turns": self.max_turns,
+                "difficulty": self.difficulty,
+                "grain": self.grain,
+                "bronze": self.bronze,
+                "timber": self.timber,
+                "prestige": self.prestige,
+                "stability": self.stability,
+                "knowledge": self.knowledge,
+                "elasticity": self.elasticity,
+                "military": self.military,
+                "collapse": self.collapse,
+                "withdrawals_used": self.withdrawals_used,
+                "max_withdrawals": self.max_withdrawals,
+                "free_harvest_used": self.free_harvest_used,
+                "paid_action_used": self.paid_action_used,
+                "tech": {
+                    "imperial_bureaucracy": self.tech_imperial_bureaucracy,
+                    "bronze_mines": self.tech_bronze_mines,
+                    "granary_network": self.tech_granary_network,
+                    "alphabetic_script": self.tech_alphabetic_script,
+                    "ironworking": self.tech_ironworking,
+                    "diplomatic_protocols": self.tech_diplomatic_protocols,
+                },
+                "builds": {
+                    "granary": self.has_granary,
+                    "library": self.has_library,
+                    "walls": self.has_walls,
+                    "bronze_mine": self.has_bronze_mine,
+                },
+                "message_log": self.message_log[-8:],  # show latest few
+                "previous_turn_summary": (self.previous_turn_summary.__dict__
+                                          if self.previous_turn_summary else None),
+                "pending_choice": (self.pending_choice.__dict__
+                                  if self.pending_choice else None),
+            }
+        except Exception as e:
+            logger.error(f"Error in to_dict: {e}", exc_info=True)
+            # Return minimal valid state
+            return {
+                "turn": getattr(self, 'turn', 1),
+                "max_turns": getattr(self, 'max_turns', 20),
+                "difficulty": getattr(self, 'difficulty', 'normal'),
+                "grain": getattr(self, 'grain', 50),
+                "bronze": getattr(self, 'bronze', 30),
+                "timber": getattr(self, 'timber', 20),
+                "prestige": getattr(self, 'prestige', 10),
+                "stability": getattr(self, 'stability', 65),
+                "knowledge": getattr(self, 'knowledge', 40),
+                "elasticity": getattr(self, 'elasticity', 50),
+                "military": getattr(self, 'military', 30),
+                "collapse": getattr(self, 'collapse', 45),
+                "withdrawals_used": 0,
+                "max_withdrawals": 3,
+                "free_harvest_used": False,
+                "paid_action_used": False,
+                "tech": {},
+                "builds": {},
+                "message_log": [],
+                "previous_turn_summary": None,
+                "pending_choice": None,
+            }
