@@ -1,0 +1,96 @@
+{
+  "name": "BRONZE Playtest with Verbalized Sampling",
+  "description": "Complete BRONZE game playtesting workflow using Verbalized Sampling for diverse player simulation and balance analysis",
+  "version": "1.0.0",
+  "nodes": [
+    {
+      "id": "node_1",
+      "block_id": "e5f6a7b8-9c0d-1e2f-3a4b-5c6d7e8f9a0b",
+      "block_type": "BronzeMultiPlayerSimulationBlock",
+      "input_default": {
+        "num_preservers": 2,
+        "num_exploiters": 2,
+        "num_hybrid": 1,
+        "initial_game_state": "Turn 1: All players start with 100 resources, 1 settlement, on a balanced map with equal opportunities. Central area has high-value resources but is contested.",
+        "num_turns": 15,
+        "enable_pvp": true,
+        "model": "gpt-4o"
+      },
+      "metadata": {
+        "position": {"x": 100, "y": 100},
+        "label": "Run BRONZE Playtest"
+      }
+    },
+    {
+      "id": "node_2",
+      "block_id": "f6a7b8c9-0d1e-2f3a-4b5c-6d7e8f9a0b1c",
+      "block_type": "PlaytestAnalysisBlock",
+      "input_default": {
+        "diversity_threshold": 0.6,
+        "expected_balance": {
+          "resource_gather": 0.3,
+          "build": 0.25,
+          "explore": 0.2,
+          "combat": 0.15,
+          "trade": 0.1
+        }
+      },
+      "metadata": {
+        "position": {"x": 400, "y": 100},
+        "label": "Analyze Playtest Results"
+      }
+    },
+    {
+      "id": "node_3",
+      "block_id": "a7b8c9d0-1e2f-3a4b-5c6d-7e8f9a0b1c2d",
+      "block_type": "VSDiversityMetricsBlock",
+      "input_default": {},
+      "metadata": {
+        "position": {"x": 400, "y": 300},
+        "label": "Calculate VS Diversity Metrics"
+      }
+    },
+    {
+      "id": "node_4",
+      "block_id": "output_node",
+      "block_type": "OutputBlock",
+      "input_default": {},
+      "metadata": {
+        "position": {"x": 700, "y": 200},
+        "label": "Display Results"
+      }
+    }
+  ],
+  "links": [
+    {
+      "source_id": "node_1",
+      "source_name": "game_log",
+      "sink_id": "node_2",
+      "sink_name": "simulation_log"
+    },
+    {
+      "source_id": "node_2",
+      "source_name": "detailed_report",
+      "sink_id": "node_4",
+      "sink_name": "analysis_report"
+    },
+    {
+      "source_id": "node_2",
+      "source_name": "balance_issues",
+      "sink_id": "node_4",
+      "sink_name": "balance_issues"
+    },
+    {
+      "source_id": "node_3",
+      "source_name": "metrics_summary",
+      "sink_id": "node_4",
+      "sink_name": "diversity_metrics"
+    }
+  ],
+  "metadata": {
+    "author": "Claude Code",
+    "created_at": "2025-10-31",
+    "tags": ["bronze", "playtest", "verbalized-sampling", "game-balance"],
+    "use_case": "BRONZE game playtesting with Preserver vs Exploiter path analysis"
+  }
+}
