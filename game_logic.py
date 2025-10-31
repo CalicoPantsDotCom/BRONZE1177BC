@@ -1,644 +1,780 @@
-"""
-Core game logic for BRONZE: 1177 BC
-Ported from v1.2.6 CLI version
-"""
+# game_logic.py
+# BRONZE: 1177 BC — Flask build (v4.1 parity patch)
+# - Restores rich event pool & weights (v1.2 feel)
+# - Turn summary logging for UI
+# - FREE Harvest + exactly ONE paid action per turn
+# - No turn advance on cancel/insufficient resources
+# - Imperial Bureaucracy mitigates Stability losses (-25%)
 
+from __future__ import annotations
+from dataclasses import dataclass, field
 import random
+import logging
+import math
+from typing import Dict, List, Optional
 
-class GameState:
-    def __init__(self, difficulty='normal'):
-        # Resources
-        self.grain = 50
-        self.timber = 20
-        self.bronze = 10
+# Configure logging
+logger = logging.getLogger(__name__)
 
-        # Core Metrics
-        self.military = 20
-        self.stability = 60
-        self.prestige = 30
 
-        # Crisis
-        self.collapse = 50
+def clamp(v: int, lo: int = 0, hi: int = 100) -> int:
+    return max(lo, min(hi, v))
 
-        # Buildings
-        self.has_bronze_mine = False
-        self.has_granary = False
-        self.has_barracks = False
-        self.has_palace = False
-        self.has_lighthouse = False
-        self.has_watchtower = False
 
-        # Technologies
-        self.has_imperial_bureaucracy = False
-        self.has_tin_trade_routes = False
-        self.has_phalanx_formation = False
-        self.has_diplomatic_marriage = False
+@dataclass
+class TurnSummary:
+    turn_number: int
+    actions: List[Dict[str, str]] = field(default_factory=list)
+    events: List[str] = field(default_factory=list)
+    income: List[str] = field(default_factory=list)
+    drift: List[str] = field(default_factory=list)
 
-        # Game state
-        self.turn = 1
-        self.difficulty = difficulty
-        self.max_turns = {'easy': 30, 'normal': 20, 'hard': 15}.get(difficulty, 20)
-        self.game_over = False
-        self.victory_type = None
-        self.message_log = []
 
-        # Action tracking (NEW)
-        self.current_turn_actions = []  # Actions taken this turn
-        self.previous_turn_summary = None  # Summary of last turn
-        self.turn_history = []  # Full history of all turns
+@dataclass
+class ChoiceEvent:
+    """Represents a choice-based event that requires player decision"""
+    event_id: str
+    title: str
+    description: str
+    choice_a_label: str
+    choice_a_effects: str
+    choice_b_label: str
+    choice_b_effects: str
 
-        # Turn action tracking (v2.3)
-        self.has_used_free_harvest = False  # One free harvest per turn
-        self.has_taken_paid_action = False  # One paid action required per turn
 
-    def to_dict(self):
-        """Serialize game state for session storage"""
-        return {
-            'grain': self.grain,
-            'timber': self.timber,
-            'bronze': self.bronze,
-            'military': self.military,
-            'stability': self.stability,
-            'prestige': self.prestige,
-            'collapse': self.collapse,
-            'has_bronze_mine': self.has_bronze_mine,
-            'has_granary': self.has_granary,
-            'has_barracks': self.has_barracks,
-            'has_palace': self.has_palace,
-            'has_lighthouse': self.has_lighthouse,
-            'has_watchtower': self.has_watchtower,
-            'has_imperial_bureaucracy': self.has_imperial_bureaucracy,
-            'has_tin_trade_routes': self.has_tin_trade_routes,
-            'has_phalanx_formation': self.has_phalanx_formation,
-            'has_diplomatic_marriage': self.has_diplomatic_marriage,
-            'turn': self.turn,
-            'difficulty': self.difficulty,
-            'max_turns': self.max_turns,
-            'game_over': self.game_over,
-            'victory_type': self.victory_type,
-            'message_log': self.message_log,
-            'current_turn_actions': self.current_turn_actions,
-            'previous_turn_summary': self.previous_turn_summary,
-            'turn_history': self.turn_history,
-            'has_used_free_harvest': self.has_used_free_harvest,
-            'has_taken_paid_action': self.has_taken_paid_action
-        }
+@dataclass
+class Game:
+    # Core resources / metrics
+    grain: int = 50
+    bronze: int = 30
+    timber: int = 20
+    prestige: int = 10  # (luxuries in the CLI build — named 'prestige' here)
+    stability: int = 65
+    knowledge: int = 40
+    elasticity: int = 50
+    military: int = 30
+    collapse: int = 45
 
-    @classmethod
-    def from_dict(cls, data):
-        """Deserialize game state from session storage"""
-        game = cls()
-        for key, value in data.items():
-            if hasattr(game, key):
-                setattr(game, key, value)
-        return game
+    # Progress
+    turn: int = 1
+    max_turns: int = 20
+    drift_per_turn: int = 3
+    difficulty: str = "normal"  # Track difficulty level
 
-    def add_message(self, message, msg_type="info"):
-        """Add message to log with type (success, warning, danger, info)"""
-        self.message_log.append({'text': message, 'type': msg_type})
+    # Tech/build flags (simple booleans so UI can reflect state)
+    tech_imperial_bureaucracy: bool = False
+    tech_bronze_mines: bool = False
+    tech_granary_network: bool = False
+    tech_alphabetic_script: bool = False
+    tech_ironworking: bool = False
+    tech_diplomatic_protocols: bool = False
+    tech_tin_trade_routes: bool = False
+    tech_phalanx_formation: bool = False
+    tech_diplomatic_marriage: bool = False
 
-    def clear_messages(self):
-        """Clear message log"""
-        self.message_log = []
+    # Build flags
+    has_granary: bool = False
+    has_library: bool = False
+    has_walls: bool = False
+    has_bronze_mine: bool = False
+    has_barracks: bool = False
+    has_palace: bool = False
+    has_lighthouse: bool = False
+    has_watchtower: bool = False
 
-    def log_action(self, action_name, effects):
-        """Log an action taken this turn"""
-        self.current_turn_actions.append({
-            'name': action_name,
-            'effects': effects
-        })
+    # Per-turn economy: FREE harvest + ONE paid action
+    free_harvest_used: bool = False
+    paid_action_used: bool = False
 
-    def check_and_auto_end_turn(self):
-        """Check if turn should auto-end (both free harvest and paid action taken)"""
-        if self.has_used_free_harvest and self.has_taken_paid_action:
-            self.add_message("✓ Turn complete! Processing end-of-turn...", "info")
-            self.end_turn()
-            return True
-        return False
+    # Withdraw (vacuum push)
+    withdrawals_used: int = 0
+    max_withdrawals: int = 3
 
-    # Actions
-    def harvest(self):
-        """Action: Harvest (+15 Grain, +10 Bronze) - First one FREE, second costs turn"""
-        if not self.has_used_free_harvest:
-            # First harvest is FREE
-            self.grain += 15
-            self.bronze += 10
-            self.has_used_free_harvest = True
-            self.log_action("Harvest (FREE)", "+15 Grain, +10 Bronze")
-            self.add_message("✓ Harvested: +15 Grain, +10 Bronze (FREE)", "success")
-            self.check_and_auto_end_turn()
-            return True
-        elif not self.has_taken_paid_action:
-            # Second harvest costs the paid action (only if no paid action taken yet)
-            self.grain += 15
-            self.bronze += 10
-            self.has_taken_paid_action = True
-            self.log_action("Harvest", "+15 Grain, +10 Bronze (paid action)")
-            self.add_message("✓ Harvested: +15 Grain, +10 Bronze (used paid action)", "success")
-            self.check_and_auto_end_turn()
-            return True
-        else:
-            # Can't harvest - already used free harvest AND took a paid action
-            self.add_message("❌ You've already taken your paid action this turn!", "danger")
+    # Messaging for UI
+    message_log: List[Dict[str, str]] = field(default_factory=list)
+    previous_turn_summary: Optional[TurnSummary] = None
+    current_turn_actions: List[Dict[str, str]] = field(default_factory=list)
+
+    # Choice events
+    pending_choice: Optional[ChoiceEvent] = None
+    
+    def __post_init__(self):
+        """Validate game state after initialization"""
+        try:
+            logger.info("Initializing new Game instance")
+            # Validate initial state (using object.__setattr__ for dataclass fields)
+            if self.turn < 1:
+                logger.warning("Turn was less than 1, resetting to 1")
+                object.__setattr__(self, 'turn', 1)
+            if self.max_turns < 1:
+                logger.warning("max_turns was less than 1, resetting to 20")
+                object.__setattr__(self, 'max_turns', 20)
+            # Initialize turn summary at game start
+            self._start_turn_summary()
+            logger.info(f"Game initialized: turn {self.turn}/{self.max_turns}")
+        except Exception as e:
+            logger.error(f"Error in Game.__post_init__: {e}", exc_info=True)
+
+    # ------------------------
+    # Utility / logging
+    # ------------------------
+    def _log(self, text: str, level: str = "info") -> None:
+        """Add a message to the game log"""
+        try:
+            self.message_log.append({"type": level, "text": text})
+            logger.debug(f"Game log [{level}]: {text}")
+        except Exception as e:
+            logger.error(f"Error in _log: {e}", exc_info=True)
+
+    def _start_turn_summary(self) -> None:
+        self.previous_turn_summary = TurnSummary(turn_number=self.turn)
+
+    def _add_action_summary(self, name: str, effects: str) -> None:
+        """Add an action to the turn summary with name and effects"""
+        if not self.previous_turn_summary or self.previous_turn_summary.turn_number != self.turn:
+            self._start_turn_summary()
+        self.previous_turn_summary.actions.append({"name": name, "effects": effects})
+    
+    def _add_current_turn_action(self, name: str, effects: str) -> None:
+        """Add an action to the current turn tracking"""
+        self.current_turn_actions.append({"name": name, "effects": effects})
+
+    def _add_event_summary(self, line: str) -> None:
+        if not self.previous_turn_summary or self.previous_turn_summary.turn_number != self.turn:
+            self._start_turn_summary()
+        self.previous_turn_summary.events.append(line)
+
+    def _add_income_summary(self, line: str) -> None:
+        if not self.previous_turn_summary or self.previous_turn_summary.turn_number != self.turn:
+            self._start_turn_summary()
+        self.previous_turn_summary.income.append(line)
+
+    def _add_drift_summary(self, line: str) -> None:
+        if not self.previous_turn_summary or self.previous_turn_summary.turn_number != self.turn:
+            self._start_turn_summary()
+        self.previous_turn_summary.drift.append(line)
+
+    # Safe stat application (with IB mitigation)
+    def _apply(self,
+               d_grain: int = 0, d_bronze: int = 0, d_timber: int = 0, d_prestige: int = 0,
+               d_stab: int = 0, d_know: int = 0, d_elast: int = 0, d_mil: int = 0, d_col: int = 0) -> str:
+
+        if self.tech_imperial_bureaucracy and d_stab < 0:
+            # Apply 25% reduction, then ceil rounds negative values up (e.g., -7.5 → -7, -10 → -10)
+            d_stab = math.ceil(d_stab * 0.75)
+
+        self.grain += d_grain
+        self.bronze += d_bronze
+        self.timber += d_timber
+        self.prestige += d_prestige
+        self.stability = clamp(self.stability + d_stab)
+        self.knowledge = clamp(self.knowledge + d_know)
+        self.elasticity = clamp(self.elasticity + d_elast)
+        self.military = clamp(self.military + d_mil)
+        self.collapse = clamp(self.collapse + d_col)
+
+        parts: List[str] = []
+        if d_grain: parts.append(f"Grain {d_grain:+}")
+        if d_bronze: parts.append(f"Bronze {d_bronze:+}")
+        if d_timber: parts.append(f"Timber {d_timber:+}")
+        if d_prestige: parts.append(f"Luxuries {d_prestige:+}")
+        if d_stab: parts.append(f"Stability {d_stab:+}")
+        if d_know: parts.append(f"Knowledge {d_know:+}")
+        if d_elast: parts.append(f"Elasticity {d_elast:+}")
+        if d_mil: parts.append(f"Military {d_mil:+}")
+        if d_col: parts.append(f"Collapse {d_col:+}")
+        return ", ".join(parts) if parts else "—"
+
+    # ------------------------
+    # Actions (return bool for “performed” so caller won’t advance turn on False)
+    # ------------------------
+    def harvest_free(self) -> bool:
+        if self.free_harvest_used:
+            self._log("You already took the free Harvest this turn.", "warning")
             return False
-
-    def gather_timber(self):
-        """Action: Gather Timber (-8 Grain → +10 Timber) - First one FREE, second costs turn"""
-        if not self.has_used_free_harvest:
-            # First gather is FREE
-            if self.grain < 8:
-                self.add_message("Insufficient Grain! Need 8 Grain.", "danger")
-                return False
-            self.grain -= 8
-            self.timber += 10
-            self.has_used_free_harvest = True
-            self.log_action("Gather Timber (FREE)", "-8 Grain, +10 Timber")
-            self.add_message("✓ Gathered Timber: -8 Grain, +10 Timber (FREE)", "success")
-            self.check_and_auto_end_turn()
-            return True
-        elif not self.has_taken_paid_action:
-            # Second gather costs the paid action (only if no paid action taken yet)
-            if self.grain < 8:
-                self.add_message("Insufficient Grain! Need 8 Grain.", "danger")
-                return False
-            self.grain -= 8
-            self.timber += 10
-            self.has_taken_paid_action = True
-            self.log_action("Gather Timber", "-8 Grain, +10 Timber (paid action)")
-            self.add_message("✓ Gathered Timber: -8 Grain, +10 Timber (used paid action)", "success")
-            self.check_and_auto_end_turn()
-            return True
-        else:
-            # Can't gather - already used free harvest AND took a paid action
-            self.add_message("❌ You've already taken your paid action this turn!", "danger")
-            return False
-
-    def fortify(self):
-        """Action: Fortify (+5 Military, -5 Stability) - PAID ACTION"""
-        if self.has_taken_paid_action:
-            self.add_message("❌ You've already taken your paid action this turn!", "danger")
-            return False
-
-        self.military += 5
-        self.stability -= 5
-        self.has_taken_paid_action = True
-        self.log_action("Fortify", "+5 Military, -5 Stability")
-        self.add_message("✓ Fortified: +5 Military, -5 Stability", "success")
-        self.check_and_auto_end_turn()
+        detail = self._apply(d_grain=+15, d_bronze=+10)
+        self._add_action_summary("Harvest", detail)
+        self._add_current_turn_action("Harvest", "+15 Grain, +10 Bronze")
+        self.free_harvest_used = True
+        self._log("✓ Harvested! +15 Grain, +10 Bronze", "success")
         return True
 
-    # Building actions
-    def build_bronze_mine(self):
-        if self.has_taken_paid_action:
-            self.add_message("❌ You've already taken your paid action this turn!", "danger")
+    def gather_timber(self) -> bool:
+        # Paid action
+        if self.paid_action_used:
+            self._log("You already used your paid action this turn.", "warning")
             return False
-        if self.has_bronze_mine:
-            self.add_message("Bronze Mine already built!", "warning")
+        if self.grain < 8:
+            self._log("✗ Not enough Grain (need 8) to Gather Timber.", "danger")
             return False
-        if self.grain < 15 or self.timber < 10:
-            self.add_message("Insufficient resources! Need 15 Grain, 10 Timber.", "danger")
-            return False
-
-        self.grain -= 15
-        self.timber -= 10
-        self.has_bronze_mine = True
-        self.has_taken_paid_action = True
-        self.log_action("Build Bronze Mine", "-15 Grain, -10 Timber | +2 Bronze/turn")
-        self.add_message("✓ Bronze Mine built! +2 Bronze per turn.", "success")
-        self.check_and_auto_end_turn()
+        detail = self._apply(d_grain=-8, d_timber=+10)
+        self._add_action_summary("Gather Timber", detail)
+        self._add_current_turn_action("Gather Timber", "-8 Grain, +10 Timber")
+        self.paid_action_used = True
+        self._log("✓ Gathered Timber! -8 Grain, +10 Timber", "success")
         return True
 
-    def build_granary(self):
-        if self.has_taken_paid_action:
-            self.add_message("❌ You've already taken your paid action this turn!", "danger")
+    def fortify(self) -> bool:
+        if self.paid_action_used:
+            self._log("You already used your paid action this turn.", "warning")
             return False
-        if self.has_granary:
-            self.add_message("Granary already built!", "warning")
+        if self.bronze < 10:
+            self._log("✗ Not enough Bronze (need 10) to Fortify.", "danger")
             return False
-        if self.grain < 20 or self.timber < 15:
-            self.add_message("Insufficient resources! Need 20 Grain, 15 Timber.", "danger")
-            return False
-
-        self.grain -= 20
-        self.timber -= 15
-        self.has_granary = True
-        self.has_taken_paid_action = True
-        self.log_action("Build Granary", "-20 Grain, -15 Timber | +3 Grain/turn")
-        self.add_message("✓ Granary built! +3 Grain per turn.", "success")
-        self.check_and_auto_end_turn()
+        detail = self._apply(d_bronze=-10, d_mil=+8)
+        self._add_action_summary("Fortify Defenses", detail)
+        self._add_current_turn_action("Fortify Defenses", "-10 Bronze, +8 Military")
+        self.paid_action_used = True
+        self._log("✓ Defenses fortified! -10 Bronze, +8 Military", "success")
         return True
 
-    def build_barracks(self):
-        if self.has_taken_paid_action:
-            self.add_message("❌ You've already taken your paid action this turn!", "danger")
+    def withdraw_support(self) -> bool:
+        if self.paid_action_used:
+            self._log("You already used your paid action this turn.", "warning")
             return False
-        if self.has_barracks:
-            self.add_message("Barracks already built!", "warning")
-            return False
-        if self.grain < 25 or self.timber < 20 or self.bronze < 10:
-            self.add_message("Insufficient resources! Need 25 Grain, 20 Timber, 10 Bronze.", "danger")
-            return False
-
-        self.grain -= 25
-        self.timber -= 20
-        self.bronze -= 10
-        self.has_barracks = True
-        self.has_taken_paid_action = True
-        self.log_action("Build Barracks", "-25 Grain, -20 Timber, -10 Bronze | +2 Military/turn")
-        self.add_message("✓ Barracks built! +2 Military per turn.", "success")
-        self.check_and_auto_end_turn()
-        return True
-
-    def build_palace(self):
-        if self.has_taken_paid_action:
-            self.add_message("❌ You've already taken your paid action this turn!", "danger")
-            return False
-        if self.has_palace:
-            self.add_message("Palace already built!", "warning")
-            return False
-        if self.grain < 30 or self.timber < 25 or self.bronze < 15:
-            self.add_message("Insufficient resources! Need 30 Grain, 25 Timber, 15 Bronze.", "danger")
-            return False
-
-        self.grain -= 30
-        self.timber -= 25
-        self.bronze -= 15
-        self.has_palace = True
-        self.has_taken_paid_action = True
-        self.log_action("Build Palace", "-30 Grain, -25 Timber, -15 Bronze | +3 Prestige/turn")
-        self.add_message("✓ Palace built! +3 Prestige per turn.", "success")
-        self.check_and_auto_end_turn()
-        return True
-
-    def build_lighthouse(self):
-        if self.has_taken_paid_action:
-            self.add_message("❌ You've already taken your paid action this turn!", "danger")
-            return False
-        if self.has_lighthouse:
-            self.add_message("Lighthouse already built!", "warning")
-            return False
-        if self.grain < 20 or self.timber < 20:
-            self.add_message("Insufficient resources! Need 20 Grain, 20 Timber.", "danger")
-            return False
-
-        self.grain -= 20
-        self.timber -= 20
-        self.has_lighthouse = True
-        self.has_taken_paid_action = True
-        self.log_action("Build Lighthouse", "-20 Grain, -20 Timber | +2 Prestige/turn, -1 Collapse/turn")
-        self.add_message("✓ Lighthouse built! +2 Prestige per turn, -1 Collapse per turn.", "success")
-        self.check_and_auto_end_turn()
-        return True
-
-    def build_watchtower(self):
-        if self.has_taken_paid_action:
-            self.add_message("❌ You've already taken your paid action this turn!", "danger")
-            return False
-        if self.has_watchtower:
-            self.add_message("Watchtower already built!", "warning")
-            return False
-        if self.grain < 15 or self.timber < 15:
-            self.add_message("Insufficient resources! Need 15 Grain, 15 Timber.", "danger")
-            return False
-
-        self.grain -= 15
-        self.timber -= 15
-        self.has_watchtower = True
-        self.has_taken_paid_action = True
-        self.log_action("Build Watchtower", "-15 Grain, -15 Timber | +1 Military/turn")
-        self.add_message("✓ Watchtower built! +1 Military per turn.", "success")
-        self.check_and_auto_end_turn()
-        return True
-
-    # Research actions
-    def research_imperial_bureaucracy(self):
-        if self.has_taken_paid_action:
-            self.add_message("❌ You've already taken your paid action this turn!", "danger")
-            return False
-        if self.has_imperial_bureaucracy:
-            self.add_message("Already researched!", "warning")
-            return False
-        if self.grain < 20 or self.prestige < 20:
-            self.add_message("Insufficient resources! Need 20 Grain, 20 Prestige.", "danger")
-            return False
-
-        self.grain -= 20
-        self.prestige -= 20
-        self.has_imperial_bureaucracy = True
-        self.has_taken_paid_action = True
-        self.log_action("Research Imperial Bureaucracy", "-20 Grain, -20 Prestige | Reduces stability drift")
-        self.add_message("✓ Imperial Bureaucracy researched! Stability drift reduced.", "success")
-        self.check_and_auto_end_turn()
-        return True
-
-    def research_tin_trade_routes(self):
-        if self.has_taken_paid_action:
-            self.add_message("❌ You've already taken your paid action this turn!", "danger")
-            return False
-        if self.has_tin_trade_routes:
-            self.add_message("Already researched!", "warning")
-            return False
-        if self.grain < 25 or self.bronze < 15:
-            self.add_message("Insufficient resources! Need 25 Grain, 15 Bronze.", "danger")
-            return False
-
-        self.grain -= 25
-        self.bronze -= 15
-        self.has_tin_trade_routes = True
-        self.has_taken_paid_action = True
-        self.log_action("Research Tin Trade Routes", "-25 Grain, -15 Bronze | +1 Bronze/turn")
-        self.add_message("✓ Tin Trade Routes researched! +1 Bronze per turn.", "success")
-        self.check_and_auto_end_turn()
-        return True
-
-    def research_phalanx_formation(self):
-        if self.has_taken_paid_action:
-            self.add_message("❌ You've already taken your paid action this turn!", "danger")
-            return False
-        if self.has_phalanx_formation:
-            self.add_message("Already researched!", "warning")
-            return False
-        if self.bronze < 20 or self.military < 25:
-            self.add_message("Insufficient resources! Need 20 Bronze, 25 Military.", "danger")
-            return False
-
-        self.bronze -= 20
-        self.military -= 25
-        self.has_phalanx_formation = True
-        self.has_taken_paid_action = True
-        self.log_action("Research Phalanx Formation", "-20 Bronze, -25 Military | +2 Military/turn")
-        self.add_message("✓ Phalanx Formation researched! +2 Military per turn.", "success")
-        self.check_and_auto_end_turn()
-        return True
-
-    def research_diplomatic_marriage(self):
-        if self.has_taken_paid_action:
-            self.add_message("❌ You've already taken your paid action this turn!", "danger")
-            return False
-        if self.has_diplomatic_marriage:
-            self.add_message("Already researched!", "warning")
-            return False
-        if self.prestige < 30:
-            self.add_message("Insufficient Prestige! Need 30 Prestige.", "danger")
-            return False
-
-        self.prestige -= 30
-        self.has_diplomatic_marriage = True
-        self.has_taken_paid_action = True
-        self.log_action("Research Diplomatic Marriage", "-30 Prestige | +1 Prestige/turn, -1 Collapse/turn")
-        self.add_message("✓ Diplomatic Marriage researched! +1 Prestige per turn, -1 Collapse per turn.", "success")
-        self.check_and_auto_end_turn()
-        return True
-
-    # Diplomacy actions
-    def send_tribute(self, target="egypt"):
-        if self.has_taken_paid_action:
-            self.add_message("❌ You've already taken your paid action this turn!", "danger")
-            return False
-        if self.grain < 15 or self.bronze < 10:
-            self.add_message("Insufficient resources! Need 15 Grain, 10 Bronze.", "danger")
-            return False
-
-        # Target-specific flavor text
-        target_names = {
-            "egypt": "🏛️ Egypt",
-            "hittites": "⚔️ the Hittites",
-            "assyria": "🦁 Assyria",
-            "mycenae": "🏺 Mycenae"
-        }
-        target_name = target_names.get(target, "a great power")
-
-        self.grain -= 15
-        self.bronze -= 10
-        self.prestige += 5
-        self.collapse -= 3
-        self.has_taken_paid_action = True
-        self.log_action(f"Send Tribute to {target_name}", "-15 Grain, -10 Bronze | +5 Prestige, -3 Collapse")
-        self.add_message(f"✓ Tribute sent to {target_name}: +5 Prestige, -3 Collapse", "success")
-        self.check_and_auto_end_turn()
-        return True
-
-    def form_alliance(self):
-        if self.has_taken_paid_action:
-            self.add_message("❌ You've already taken your paid action this turn!", "danger")
-            return False
-        if self.prestige < 15:
-            self.add_message("Insufficient Prestige! Need 15 Prestige.", "danger")
-            return False
-
-        self.prestige -= 15
-        self.military += 5
-        self.collapse -= 2
-        self.has_taken_paid_action = True
-        self.log_action("Form Alliance", "-15 Prestige | +5 Military, -2 Collapse")
-        self.add_message("✓ Alliance formed: +5 Military, -2 Collapse", "success")
-        self.check_and_auto_end_turn()
-        return True
-
-    def host_festival(self):
-        if self.has_taken_paid_action:
-            self.add_message("❌ You've already taken your paid action this turn!", "danger")
-            return False
-        if self.grain < 20:
-            self.add_message("Insufficient Grain! Need 20 Grain.", "danger")
-            return False
-
-        self.grain -= 20
-        self.stability += 10
-        self.prestige += 3
-        self.has_taken_paid_action = True
-        self.log_action("Host Festival", "-20 Grain | +10 Stability, +3 Prestige")
-        self.add_message("✓ Festival hosted: +10 Stability, +3 Prestige", "success")
-        self.check_and_auto_end_turn()
-        return True
-
-    # Withdraw action
-    def withdraw_from_alliance(self):
-        if self.has_taken_paid_action:
-            self.add_message("❌ You've already taken your paid action this turn!", "danger")
+        if self.withdrawals_used >= self.max_withdrawals:
+            self._log("✗ No withdrawals remaining.", "danger")
             return False
         if self.stability < 45:
-            self.add_message("Cannot withdraw! Stability too low (need ≥45).", "danger")
+            self._log("✗ Withdraw locked — requires Stability ≥ 45.", "warning")
             return False
-
-        self.military += 10
-        self.stability -= 15
-        self.prestige -= 10
-        self.collapse += 5
-        self.has_taken_paid_action = True
-        self.log_action("Withdraw from Alliance", "+10 Military, -15 Stability, -10 Prestige, +5 Collapse")
-        self.add_message("✓ Withdrew from alliance: +10 Military, -15 Stability, -10 Prestige, +5 Collapse", "warning")
-        self.check_and_auto_end_turn()
+        detail = self._apply(d_stab=-10, d_col=+15)
+        self.withdrawals_used += 1
+        self._add_action_summary("Withdraw Support", detail)
+        self._add_current_turn_action("Withdraw Support", "-10 Stability, +15 Collapse")
+        self.paid_action_used = True
+        self._log(f"⚠️ Support withdrawn ({self.max_withdrawals - self.withdrawals_used} left). +15 Collapse, -10 Stability", "danger")
         return True
 
-    # End-of-turn logic
-    def end_turn(self):
-        """Process end-of-turn effects and compile turn summary"""
-        # Build turn summary
-        summary = {
-            'turn_number': self.turn,
-            'actions': list(self.current_turn_actions),  # Copy actions taken
-            'events': [],
-            'income': [],
-            'drift': []
-        }
+    # Minimal tech/build hooks (keep names your UI expects)
+    def research_imperial_bureaucracy(self) -> bool:
+        if self.paid_action_used:
+            self._log("You already used your paid action this turn.", "warning")
+            return False
+        # Example cost: 15 Knowledge, 20 Grain
+        if self.knowledge < 15 or self.grain < 20:
+            self._log("✗ Insufficient resources for Imperial Bureaucracy.", "danger")
+            return False
+        detail = self._apply(d_know=-15, d_grain=-20, d_elast=+10)
+        self.tech_imperial_bureaucracy = True
+        self._add_action_summary("Researched Imperial Bureaucracy", detail)
+        self._add_current_turn_action("Researched Imperial Bureaucracy", "-15 Knowledge, -20 Grain, +10 Elasticity")
+        self.paid_action_used = True
+        self._log("✓ Researched Imperial Bureaucracy! Stability losses reduced 25%.", "success")
+        return True
 
-        # Per-turn yields from buildings
-        if self.has_bronze_mine:
-            self.bronze += 2
-            summary['income'].append("Bronze Mine: +2 Bronze")
+    def build_bronze_mine(self) -> bool:
+        if self.paid_action_used:
+            self._log("You already used your paid action this turn.", "warning")
+            return False
+        if self.timber < 20 or self.grain < 15:
+            self._log("✗ Not enough Timber (20) and Grain (15) to build Bronze Mine.", "danger")
+            return False
+        detail = self._apply(d_timber=-20, d_grain=-15)
+        self.has_bronze_mine = True
+        self._add_action_summary("Built Bronze Mine", f"{detail} → +3 Bronze/turn")
+        self._add_current_turn_action("Built Bronze Mine", "-20 Timber, -15 Grain → +3 Bronze/turn")
+        self.paid_action_used = True
+        self._log("✓ Bronze Mine built! +3 Bronze each turn.", "success")
+        return True
+
+    def build_granary(self) -> bool:
+        if self.paid_action_used:
+            self._log("You already used your paid action this turn.", "warning")
+            return False
         if self.has_granary:
-            self.grain += 3
-            summary['income'].append("Granary: +3 Grain")
+            self._log("✗ Granary already built.", "warning")
+            return False
+        if self.timber < 15 or self.grain < 20:
+            self._log("✗ Not enough Timber (15) and Grain (20) to build Granary.", "danger")
+            return False
+        detail = self._apply(d_timber=-15, d_grain=-20)
+        self.has_granary = True
+        self._add_action_summary("Built Granary", f"{detail} → +5 Grain/turn")
+        self._add_current_turn_action("Built Granary", "-15 Timber, -20 Grain → +5 Grain/turn")
+        self.paid_action_used = True
+        self._log("✓ Granary built! +5 Grain each turn.", "success")
+        return True
+
+    def build_barracks(self) -> bool:
+        if self.paid_action_used:
+            self._log("You already used your paid action this turn.", "warning")
+            return False
         if self.has_barracks:
-            self.military += 2
-            summary['income'].append("Barracks: +2 Military")
+            self._log("✗ Barracks already built.", "warning")
+            return False
+        if self.timber < 20 or self.grain < 25 or self.bronze < 10:
+            self._log("✗ Not enough Timber (20), Grain (25), and Bronze (10) to build Barracks.", "danger")
+            return False
+        detail = self._apply(d_timber=-20, d_grain=-25, d_bronze=-10, d_mil=+15)
+        self.has_barracks = True
+        self._add_action_summary("Built Barracks", detail)
+        self._add_current_turn_action("Built Barracks", "-20 Timber, -25 Grain, -10 Bronze, +15 Military")
+        self.paid_action_used = True
+        self._log("✓ Barracks built! +15 Military.", "success")
+        return True
+
+    def build_palace(self) -> bool:
+        if self.paid_action_used:
+            self._log("You already used your paid action this turn.", "warning")
+            return False
         if self.has_palace:
-            self.prestige += 3
-            summary['income'].append("Palace: +3 Prestige")
+            self._log("✗ Palace already built.", "warning")
+            return False
+        if self.timber < 25 or self.grain < 30 or self.bronze < 15:
+            self._log("✗ Not enough Timber (25), Grain (30), and Bronze (15) to build Palace.", "danger")
+            return False
+        detail = self._apply(d_timber=-25, d_grain=-30, d_bronze=-15, d_prestige=+20, d_stab=+10)
+        self.has_palace = True
+        self._add_action_summary("Built Palace", detail)
+        self._add_current_turn_action("Built Palace", "-25 Timber, -30 Grain, -15 Bronze, +20 Prestige, +10 Stability")
+        self.paid_action_used = True
+        self._log("✓ Palace built! +20 Prestige, +10 Stability.", "success")
+        return True
+
+    def build_lighthouse(self) -> bool:
+        if self.paid_action_used:
+            self._log("You already used your paid action this turn.", "warning")
+            return False
         if self.has_lighthouse:
-            self.prestige += 2
-            self.collapse -= 1
-            summary['income'].append("Lighthouse: +2 Prestige, -1 Collapse")
+            self._log("✗ Lighthouse already built.", "warning")
+            return False
+        if self.timber < 20 or self.grain < 20:
+            self._log("✗ Not enough Timber (20) and Grain (20) to build Lighthouse.", "danger")
+            return False
+        detail = self._apply(d_timber=-20, d_grain=-20, d_prestige=+10, d_col=-3)
+        self.has_lighthouse = True
+        self._add_action_summary("Built Lighthouse", detail)
+        self._add_current_turn_action("Built Lighthouse", "-20 Timber, -20 Grain, +10 Prestige, -3 Collapse")
+        self.paid_action_used = True
+        self._log("✓ Lighthouse built! +10 Prestige, -3 Collapse.", "success")
+        return True
+
+    def build_watchtower(self) -> bool:
+        if self.paid_action_used:
+            self._log("You already used your paid action this turn.", "warning")
+            return False
         if self.has_watchtower:
-            self.military += 1
-            summary['income'].append("Watchtower: +1 Military")
+            self._log("✗ Watchtower already built.", "warning")
+            return False
+        if self.timber < 15 or self.grain < 15:
+            self._log("✗ Not enough Timber (15) and Grain (15) to build Watchtower.", "danger")
+            return False
+        detail = self._apply(d_timber=-15, d_grain=-15, d_mil=+10)
+        self.has_watchtower = True
+        self._add_action_summary("Built Watchtower", detail)
+        self._add_current_turn_action("Built Watchtower", "-15 Timber, -15 Grain, +10 Military")
+        self.paid_action_used = True
+        self._log("✓ Watchtower built! +10 Military.", "success")
+        return True
 
-        # Per-turn yields from techs
-        if self.has_tin_trade_routes:
-            self.bronze += 1
-            summary['income'].append("Tin Trade Routes: +1 Bronze")
-        if self.has_phalanx_formation:
-            self.military += 2
-            summary['income'].append("Phalanx Formation: +2 Military")
-        if self.has_diplomatic_marriage:
-            self.prestige += 1
-            self.collapse -= 1
-            summary['income'].append("Diplomatic Marriage: +1 Prestige, -1 Collapse")
+    def research_tin_trade_routes(self) -> bool:
+        if self.paid_action_used:
+            self._log("You already used your paid action this turn.", "warning")
+            return False
+        if self.tech_tin_trade_routes:
+            self._log("✗ Tin Trade Routes already researched.", "warning")
+            return False
+        if self.grain < 25 or self.bronze < 15:
+            self._log("✗ Not enough Grain (25) and Bronze (15) for Tin Trade Routes.", "danger")
+            return False
+        detail = self._apply(d_grain=-25, d_bronze=-15, d_prestige=+10, d_col=-2)
+        self.tech_tin_trade_routes = True
+        self._add_action_summary("Researched Tin Trade Routes", detail)
+        self._add_current_turn_action("Researched Tin Trade Routes", "-25 Grain, -15 Bronze, +10 Prestige, -2 Collapse")
+        self.paid_action_used = True
+        self._log("✓ Researched Tin Trade Routes! +10 Prestige, -2 Collapse.", "success")
+        return True
 
-        # Drift calculations
-        stability_drift = -2
-        if self.has_imperial_bureaucracy:
-            stability_drift = -1
-        self.stability += stability_drift
-        summary['drift'].append(f"Stability: {stability_drift:+d}")
+    def research_phalanx_formation(self) -> bool:
+        if self.paid_action_used:
+            self._log("You already used your paid action this turn.", "warning")
+            return False
+        if self.tech_phalanx_formation:
+            self._log("✗ Phalanx Formation already researched.", "warning")
+            return False
+        if self.bronze < 20 or self.military < 25:
+            self._log("✗ Not enough Bronze (20) and Military (25) for Phalanx Formation.", "danger")
+            return False
+        detail = self._apply(d_bronze=-20, d_mil=+15)
+        self.tech_phalanx_formation = True
+        self._add_action_summary("Researched Phalanx Formation", detail)
+        self._add_current_turn_action("Researched Phalanx Formation", "-20 Bronze, +15 Military")
+        self.paid_action_used = True
+        self._log("✓ Researched Phalanx Formation! +15 Military.", "success")
+        return True
 
-        collapse_drift = 1
-        self.collapse += collapse_drift
-        summary['drift'].append(f"Collapse: {collapse_drift:+d}")
+    def research_diplomatic_marriage(self) -> bool:
+        if self.paid_action_used:
+            self._log("You already used your paid action this turn.", "warning")
+            return False
+        if self.tech_diplomatic_marriage:
+            self._log("✗ Diplomatic Marriage already researched.", "warning")
+            return False
+        if self.prestige < 30:
+            self._log("✗ Not enough Prestige (30) for Diplomatic Marriage.", "danger")
+            return False
+        detail = self._apply(d_prestige=-30, d_stab=+15, d_col=-5)
+        self.tech_diplomatic_marriage = True
+        self._add_action_summary("Researched Diplomatic Marriage", detail)
+        self._add_current_turn_action("Researched Diplomatic Marriage", "-30 Prestige, +15 Stability, -5 Collapse")
+        self.paid_action_used = True
+        self._log("✓ Researched Diplomatic Marriage! +15 Stability, -5 Collapse.", "success")
+        return True
 
-        # Random events (stores in summary['events'])
-        self.trigger_random_event_for_summary(summary)
+    def send_tribute(self, target: str) -> bool:
+        if self.paid_action_used:
+            self._log("You already used your paid action this turn.", "warning")
+            return False
+        if self.grain < 15 or self.bronze < 10:
+            self._log("✗ Not enough Grain (15) and Bronze (10) to send tribute.", "danger")
+            return False
+        detail = self._apply(d_grain=-15, d_bronze=-10, d_prestige=+5, d_col=-3)
+        self._add_action_summary(f"Sent tribute to {target.capitalize()}", detail)
+        self._add_current_turn_action(f"Sent tribute to {target.capitalize()}", "-15 Grain, -10 Bronze, +5 Prestige, -3 Collapse")
+        self.paid_action_used = True
+        self._log(f"✓ Tribute sent to {target.capitalize()}! +5 Prestige, -3 Collapse.", "success")
+        return True
 
-        # Clamp values
-        self.grain = max(0, self.grain)
-        self.timber = max(0, self.timber)
-        self.bronze = max(0, self.bronze)
-        self.military = max(0, min(100, self.military))
-        self.stability = max(0, min(100, self.stability))
-        self.prestige = max(0, min(100, self.prestige))
-        self.collapse = max(0, min(100, self.collapse))
+    def form_alliance(self) -> bool:
+        if self.paid_action_used:
+            self._log("You already used your paid action this turn.", "warning")
+            return False
+        if self.prestige < 15:
+            self._log("✗ Not enough Prestige (15) to form alliance.", "danger")
+            return False
+        detail = self._apply(d_prestige=-15, d_stab=+8, d_mil=+5, d_col=-4)
+        self._add_action_summary("Formed Alliance", detail)
+        self._add_current_turn_action("Formed Alliance", "-15 Prestige, +8 Stability, +5 Military, -4 Collapse")
+        self.paid_action_used = True
+        self._log("✓ Alliance formed! +8 Stability, +5 Military, -4 Collapse.", "success")
+        return True
 
-        # Store summary and advance turn
-        self.previous_turn_summary = summary
-        self.turn_history.append(summary)
-        self.current_turn_actions = []  # Clear for next turn
+    def host_festival(self) -> bool:
+        if self.paid_action_used:
+            self._log("You already used your paid action this turn.", "warning")
+            return False
+        if self.grain < 20:
+            self._log("✗ Not enough Grain (20) to host festival.", "danger")
+            return False
+        detail = self._apply(d_grain=-20, d_stab=+10, d_prestige=+8)
+        self._add_action_summary("Hosted Festival", detail)
+        self._add_current_turn_action("Hosted Festival", "-20 Grain, +10 Stability, +8 Prestige")
+        self.paid_action_used = True
+        self._log("✓ Festival hosted! +10 Stability, +8 Prestige.", "success")
+        return True
 
-        # Reset turn action tracking (v2.3)
-        self.has_used_free_harvest = False
-        self.has_taken_paid_action = False
+    # ------------------------
+    # End-of-turn / economy / events
+    # ------------------------
+    def apply_income(self) -> None:
+        if self.has_bronze_mine:
+            self.bronze += 3
+            self._add_income_summary("Bronze Mines: +3 Bronze")
+        if self.has_granary or self.tech_granary_network:
+            self.grain += 5
+            self._add_income_summary("Granary Network: +5 Grain")
 
-        self.turn += 1
+    def apply_drift(self) -> None:
+        self.collapse = clamp(self.collapse + self.drift_per_turn)
+        self._add_drift_summary(f"Collapse Drift: +{self.drift_per_turn}")
 
-        # Check win/loss conditions
-        self.check_victory()
+    # Event tables (v1.2 feel)
+    def resolve_random_event(self) -> None:
+        NEG, POS, CHOICE = "neg", "pos", "choice"
+        tables = {
+            NEG: [
+                ("Sea Peoples Raid",        6,  lambda: self._apply(d_mil=-12, d_stab=-9,  d_col=+8)),
+                ("Trade Route Disruption",  5,  lambda: self._apply(d_bronze=-10, d_prestige=-5, d_stab=-6, d_col=+6)),
+                ("Palace Conspiracy",       4,  lambda: self._apply(d_stab=-15, d_prestige=-8, d_col=+5)),
+                ("Drought in Anatolia",     4,  lambda: self._apply(d_grain=-15, d_stab=-7,  d_col=+5)),
+                ("Vassal Rebellion",        3,  lambda: self._apply(d_mil=-10, d_stab=-11, d_grain=-10, d_col=+7)),
+            ],
+            POS: [
+                ("Diplomatic Success",      6,  lambda: self._apply(d_stab=+12, d_prestige=+8, d_col=-4)),
+                ("Bountiful Harvest",       5,  lambda: self._apply(d_grain=+20, d_stab=+8,  d_col=-3)),
+                ("Military Victory",        4,  lambda: self._apply(d_mil=+12, d_stab=+10,  d_col=-3)),
+                ("Technological Breakthrough", 3, lambda: self._apply(d_know=+15, d_stab=+5, d_col=-2)),
+            ],
+        }
+        NEGATIVE_CHANCE = 0.50
+        POSITIVE_CHANCE = 0.30
+        CHOICE_CHANCE = 0.10
 
-    def trigger_random_event_for_summary(self, summary):
-        """Trigger a random event with 40% chance and add to summary"""
-        if random.random() > 0.4:
-            return
+        r = random.random()
+        if r < NEGATIVE_CHANCE:
+            name, delta = self._weighted_apply(tables[NEG])
+            self._log(f"✗ CRISIS: {name} — {delta}", "danger")
+            self._add_event_summary(f"CRISIS: {name} — {delta}")
+        elif r < NEGATIVE_CHANCE + POSITIVE_CHANCE:
+            name, delta = self._weighted_apply(tables[POS])
+            self._log(f"✓ POSITIVE EVENT: {name} — {delta}", "success")
+            self._add_event_summary(f"POSITIVE: {name} — {delta}")
+        elif r < NEGATIVE_CHANCE + POSITIVE_CHANCE + CHOICE_CHANCE:
+            # Trigger a choice event
+            self._trigger_choice_event()
+        else:
+            # No event
+            pass
 
-        events = [
-            # Positive events (60%)
-            {"name": "Bountiful Harvest", "grain": 10, "stability": 5, "collapse": -2, "weight": 15},
-            {"name": "Trade Caravan Arrives", "bronze": 8, "prestige": 3, "collapse": -1, "weight": 12},
-            {"name": "Diplomatic Victory", "prestige": 8, "collapse": -3, "weight": 10},
-            {"name": "Military Recruitment", "military": 8, "grain": -5, "weight": 8},
-            {"name": "Cultural Renaissance", "prestige": 10, "stability": 5, "weight": 8},
-            {"name": "Improved Irrigation", "grain": 12, "collapse": -2, "weight": 7},
+    def _weighted_apply(self, table):
+        total = sum(w for _, w, _ in table)
+        pick = random.uniform(0, total)
+        upto = 0
+        for name, w, fn in table:
+            if upto + w >= pick:
+                delta = fn()
+                return name, (delta or "—")
+            upto += w
+        name, _, fn = table[-1]
+        delta = fn()
+        return name, (delta or "—")
 
-            # Negative events (40%)
-            {"name": "Earthquake", "timber": -8, "stability": -5, "collapse": 3, "weight": 8},
-            {"name": "Pirate Raid", "bronze": -6, "military": -3, "collapse": 2, "weight": 8},
-            {"name": "Drought", "grain": -10, "stability": -5, "collapse": 2, "weight": 8},
-            {"name": "Rebellion", "stability": -10, "military": -5, "collapse": 4, "weight": 7},
-            {"name": "Trade Disruption", "bronze": -8, "prestige": -5, "collapse": 3, "weight": 6}
+    def _trigger_choice_event(self) -> None:
+        """Randomly select and trigger a choice event"""
+        choice_events = [
+            self._create_vassal_aid_choice,
+            self._create_hittite_trade_choice,
+            self._create_refugee_crisis_choice,
         ]
+        choice_fn = random.choice(choice_events)
+        self.pending_choice = choice_fn()
+        self._log(f"⚠️ CHOICE EVENT: {self.pending_choice.title}", "warning")
 
-        # Weighted random selection
-        total_weight = sum(e["weight"] for e in events)
-        rand = random.uniform(0, total_weight)
-        cumulative = 0
+    def _create_vassal_aid_choice(self) -> ChoiceEvent:
+        """Vassal Requests Aid choice event"""
+        return ChoiceEvent(
+            event_id="vassal_aid",
+            title="Vassal Requests Aid",
+            description="A vassal kingdom sends urgent word: famine threatens their lands. They request grain supplies to stabilize their region.",
+            choice_a_label="Send Grain (-20 Grain)",
+            choice_a_effects="+8 Prestige, +5 Stability, -2 Collapse",
+            choice_b_label="Refuse Aid",
+            choice_b_effects="-10 Prestige, -8 Stability, +3 Collapse"
+        )
 
-        for event in events:
-            cumulative += event["weight"]
-            if rand <= cumulative:
-                self.apply_event_for_summary(event, summary)
-                break
+    def _create_hittite_trade_choice(self) -> ChoiceEvent:
+        """Hittite Trade Offer choice event"""
+        return ChoiceEvent(
+            event_id="hittite_trade",
+            title="Hittite Trade Offer",
+            description="Hittite merchants arrive with a trade proposal: they offer valuable bronze ingots in exchange for timber from your forests.",
+            choice_a_label="Accept Trade (-15 Timber)",
+            choice_a_effects="+12 Bronze, +5 Prestige, -1 Collapse",
+            choice_b_label="Decline Offer",
+            choice_b_effects="-3 Prestige"
+        )
 
-    def apply_event_for_summary(self, event, summary):
-        """Apply event effects and record in summary"""
-        effects = []
+    def _create_refugee_crisis_choice(self) -> ChoiceEvent:
+        """Refugee Crisis choice event"""
+        return ChoiceEvent(
+            event_id="refugee_crisis",
+            title="Refugee Crisis",
+            description="Refugees from a collapsed neighboring kingdom arrive at your borders, seeking shelter and protection.",
+            choice_a_label="Welcome Refugees (-12 Grain)",
+            choice_a_effects="+10 Stability, +6 Military, -2 Collapse",
+            choice_b_label="Turn Them Away",
+            choice_b_effects="-12 Stability, +3 Military, +4 Collapse"
+        )
 
-        if "grain" in event:
-            self.grain += event["grain"]
-            effects.append(f"{event['grain']:+d} Grain")
-        if "timber" in event:
-            self.timber += event["timber"]
-            effects.append(f"{event['timber']:+d} Timber")
-        if "bronze" in event:
-            self.bronze += event["bronze"]
-            effects.append(f"{event['bronze']:+d} Bronze")
-        if "military" in event:
-            self.military += event["military"]
-            effects.append(f"{event['military']:+d} Military")
-        if "stability" in event:
-            self.stability += event["stability"]
-            effects.append(f"{event['stability']:+d} Stability")
-        if "prestige" in event:
-            self.prestige += event["prestige"]
-            effects.append(f"{event['prestige']:+d} Prestige")
-        if "collapse" in event:
-            self.collapse += event["collapse"]
-            effects.append(f"{event['collapse']:+d} Collapse")
+    def resolve_choice(self, choice: str) -> bool:
+        """Handle player's choice for a pending choice event"""
+        try:
+            if not self.pending_choice:
+                logger.warning("resolve_choice called with no pending choice")
+                return False
 
-        # Add to summary
-        event_description = f"{event['name']}: {', '.join(effects)}"
-        summary['events'].append(event_description)
+            event_id = self.pending_choice.event_id
+            logger.info(f"Resolving choice event {event_id} with choice {choice}")
+            
+            if event_id == "vassal_aid":
+                if choice == "a":
+                    if self.grain < 20:
+                        self._log("Insufficient Grain to send aid!", "danger")
+                        return False
+                    self.grain -= 20
+                    self._apply(d_prestige=+8, d_stab=+5, d_col=-2)
+                    self._log(f"✓ {self.pending_choice.choice_a_label}: {self.pending_choice.choice_a_effects}", "success")
+                    self._add_event_summary(f"CHOICE: {self.pending_choice.title} → Sent Aid")
+                else:
+                    self._apply(d_prestige=-10, d_stab=-8, d_col=+3)
+                    self._log(f"✓ {self.pending_choice.choice_b_label}: {self.pending_choice.choice_b_effects}", "warning")
+                    self._add_event_summary(f"CHOICE: {self.pending_choice.title} → Refused")
+            
+            elif event_id == "hittite_trade":
+                if choice == "a":
+                    if self.timber < 15:
+                        self._log("Insufficient Timber for trade!", "danger")
+                        return False
+                    self.timber -= 15
+                    self._apply(d_bronze=+12, d_prestige=+5, d_col=-1)
+                    self._log(f"✓ {self.pending_choice.choice_a_label}: {self.pending_choice.choice_a_effects}", "success")
+                    self._add_event_summary(f"CHOICE: {self.pending_choice.title} → Accepted Trade")
+                else:
+                    self._apply(d_prestige=-3)
+                    self._log(f"✓ {self.pending_choice.choice_b_label}: {self.pending_choice.choice_b_effects}", "warning")
+                    self._add_event_summary(f"CHOICE: {self.pending_choice.title} → Declined")
+            
+            elif event_id == "refugee_crisis":
+                if choice == "a":
+                    if self.grain < 12:
+                        self._log("Insufficient Grain to welcome refugees!", "danger")
+                        return False
+                    self.grain -= 12
+                    self._apply(d_stab=+10, d_mil=+6, d_col=-2)
+                    self._log(f"✓ {self.pending_choice.choice_a_label}: {self.pending_choice.choice_a_effects}", "success")
+                    self._add_event_summary(f"CHOICE: {self.pending_choice.title} → Welcomed Refugees")
+                else:
+                    self._apply(d_stab=-12, d_mil=+3, d_col=+4)
+                    self._log(f"✓ {self.pending_choice.choice_b_label}: {self.pending_choice.choice_b_effects}", "warning")
+                    self._add_event_summary(f"CHOICE: {self.pending_choice.title} → Turned Away")
+            
+            self.pending_choice = None
+            logger.info("Choice resolved successfully")
+            return True
+        except Exception as e:
+            logger.error(f"Error in resolve_choice: {e}", exc_info=True)
+            self.pending_choice = None
+            return False
 
-    def check_victory(self):
-        """Check win/loss conditions"""
-        # Loss conditions
-        if self.stability <= 0:
-            self.game_over = True
-            self.victory_type = "loss_stability"
-            return
+    def can_end_turn(self) -> bool:
+        if not self.free_harvest_used:
+            self._log("Take the FREE Harvest before ending your turn.", "warning")
+            return False
+        if not self.paid_action_used:
+            self._log("You still have one paid action this turn.", "warning")
+            return False
+        return True
 
-        if self.collapse >= 100:
-            self.game_over = True
-            self.victory_type = "loss_collapse"
-            return
+    def end_turn(self) -> bool:
+        """Advance the turn if both action flags were used."""
+        try:
+            if not self.can_end_turn():
+                return False
 
-        # Win conditions
-        if self.collapse <= 0:
-            self.game_over = True
-            self.victory_type = "win_preservation"
-            return
+            logger.info(f"Ending turn {self.turn}")
+            
+            # Apply income with error handling
+            try:
+                self.apply_income()
+            except Exception as e:
+                logger.error(f"Error applying income: {e}", exc_info=True)
+                self._log("Error calculating income, but turn continues.", "warning")
+            
+            # Resolve random events with error handling
+            try:
+                self.resolve_random_event()
+            except Exception as e:
+                logger.error(f"Error resolving random event: {e}", exc_info=True)
+                self._log("Error processing event, but turn continues.", "warning")
+            
+            # Apply drift with error handling
+            try:
+                self.apply_drift()
+            except Exception as e:
+                logger.error(f"Error applying drift: {e}", exc_info=True)
+                self._log("Error applying collapse drift, but turn continues.", "warning")
 
-        if self.turn > self.max_turns:
-            if self.collapse >= 80 and self.military >= 50:
-                self.game_over = True
-                self.victory_type = "win_vacuum"
-            else:
-                self.game_over = True
-                self.victory_type = "loss_time"
+            # Always advance turn and reset flags, even if there were errors above
+            self.turn += 1
+            self.free_harvest_used = False
+            self.paid_action_used = False
+            
+            # Initialize turn summary at start of new turn
+            self._start_turn_summary()
+            
+            # Clear current turn actions for the new turn
+            self.current_turn_actions = []
+            
+            logger.info(f"Turn advanced to {self.turn}")
+            return True
+        except Exception as e:
+            logger.error(f"Critical error in end_turn: {e}", exc_info=True)
+            # Try to recover by at least resetting the flags
+            # This ensures players can continue even if there's an error
+            try:
+                self.free_harvest_used = False
+                self.paid_action_used = False
+                logger.info("Recovered: Reset action flags")
+            except Exception as recovery_error:
+                logger.error(f"Could not reset flags: {recovery_error}", exc_info=True)
+            return False
+
+    # ------------------------
+    # Helpers for templates
+    # ------------------------
+    def to_dict(self) -> Dict:
+        """Convert game state to dictionary for templates"""
+        try:
+            return {
+                "turn": self.turn,
+                "max_turns": self.max_turns,
+                "difficulty": self.difficulty,
+                "grain": self.grain,
+                "bronze": self.bronze,
+                "timber": self.timber,
+                "prestige": self.prestige,
+                "stability": self.stability,
+                "knowledge": self.knowledge,
+                "elasticity": self.elasticity,
+                "military": self.military,
+                "collapse": self.collapse,
+                "withdrawals_used": self.withdrawals_used,
+                "max_withdrawals": self.max_withdrawals,
+                "free_harvest_used": self.free_harvest_used,
+                "paid_action_used": self.paid_action_used,
+                "tech": {
+                    "imperial_bureaucracy": self.tech_imperial_bureaucracy,
+                    "bronze_mines": self.tech_bronze_mines,
+                    "granary_network": self.tech_granary_network,
+                    "alphabetic_script": self.tech_alphabetic_script,
+                    "ironworking": self.tech_ironworking,
+                    "diplomatic_protocols": self.tech_diplomatic_protocols,
+                    "tin_trade_routes": self.tech_tin_trade_routes,
+                    "phalanx_formation": self.tech_phalanx_formation,
+                    "diplomatic_marriage": self.tech_diplomatic_marriage,
+                },
+                "builds": {
+                    "granary": self.has_granary,
+                    "library": self.has_library,
+                    "walls": self.has_walls,
+                    "bronze_mine": self.has_bronze_mine,
+                    "barracks": self.has_barracks,
+                    "palace": self.has_palace,
+                    "lighthouse": self.has_lighthouse,
+                    "watchtower": self.has_watchtower,
+                },
+                "message_log": self.message_log[-8:],  # show latest few
+                "current_turn_actions": self.current_turn_actions,
+                "previous_turn_summary": (self.previous_turn_summary.__dict__
+                                          if self.previous_turn_summary else None),
+                "pending_choice": (self.pending_choice.__dict__
+                                  if self.pending_choice else None),
+            }
+        except Exception as e:
+            logger.error(f"Error in to_dict: {e}", exc_info=True)
+            # Return minimal valid state
+            return {
+                "turn": getattr(self, 'turn', 1),
+                "max_turns": getattr(self, 'max_turns', 20),
+                "difficulty": getattr(self, 'difficulty', 'normal'),
+                "grain": getattr(self, 'grain', 50),
+                "bronze": getattr(self, 'bronze', 30),
+                "timber": getattr(self, 'timber', 20),
+                "prestige": getattr(self, 'prestige', 10),
+                "stability": getattr(self, 'stability', 65),
+                "knowledge": getattr(self, 'knowledge', 40),
+                "elasticity": getattr(self, 'elasticity', 50),
+                "military": getattr(self, 'military', 30),
+                "collapse": getattr(self, 'collapse', 45),
+                "withdrawals_used": 0,
+                "max_withdrawals": 3,
+                "free_harvest_used": False,
+                "paid_action_used": False,
+                "tech": {},
+                "builds": {},
+                "message_log": [],
+                "current_turn_actions": [],
+                "previous_turn_summary": None,
+                "pending_choice": None,
+            }
