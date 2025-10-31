@@ -67,11 +67,9 @@ def action(action_name):
 
     success = False
 
-    # Direct actions
-    # HARVEST IS FREE - doesn't advance turn
+    # Basic actions - turns auto-end when both free harvest + paid action taken
     if action_name == 'harvest':
         success = game.harvest()
-    # All other actions cost the turn (handled in end_turn route)
     elif action_name == 'gather_timber':
         success = game.gather_timber()
     elif action_name == 'fortify':
@@ -114,8 +112,8 @@ def action(action_name):
     elif action_name == 'withdraw':
         success = game.withdraw_from_alliance()
 
-    # DO NOT auto-advance turn anymore
-    # Player must click "End Turn" button
+    # Turns auto-end when both conditions met: free harvest taken + paid action taken
+    # See check_and_auto_end_turn() in game_logic.py
 
     save_game(game)
 
@@ -128,18 +126,6 @@ def action(action_name):
             'game': game.to_dict()
         })
 
-    return redirect(url_for('game'))
-
-@app.route('/end_turn', methods=['POST'])
-def end_turn_route():
-    """End the current turn"""
-    game = get_game()
-    game.clear_messages()
-
-    # Process end-of-turn
-    game.end_turn()
-
-    save_game(game)
     return redirect(url_for('game'))
 
 @app.route('/victory')

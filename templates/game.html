@@ -171,9 +171,9 @@
     <!-- Messages -->
     <div class="col-12 mb-3" id="message-area">
         {% for msg in game.message_log %}
-        <div class="alert alert-{{ msg.type }} alert-dismissible fade show" role="alert">
+        <div class="alert alert-{{ msg.type }} alert-dismissible" role="alert">
             {{ msg.text }}
-            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            <button type="button" class="btn-close" aria-label="Close"></button>
         </div>
         {% endfor %}
     </div>
