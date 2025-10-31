@@ -233,5 +233,92 @@ class TestActionSummary(unittest.TestCase):
         self.assertEqual(len(self.game.current_turn_actions), 0)
 
 
+class TestGameEndConditions(unittest.TestCase):
+    """Test centralized game end checking"""
+
+    def setUp(self):
+        """Create a fresh game for each test"""
+        self.game = Game()
+
+    def test_collapse_100_triggers_defeat(self):
+        """Test that collapse >= 100 triggers defeat"""
+        self.game.collapse = 100
+        result = self.game._check_game_end()
+        self.assertIsNotNone(result)
+        self.assertEqual(result["type"], "defeat")
+        self.assertEqual(result["reason"], "collapse")
+
+    def test_stability_0_triggers_defeat(self):
+        """Test that stability <= 0 triggers defeat"""
+        self.game.stability = 0
+        result = self.game._check_game_end()
+        self.assertIsNotNone(result)
+        self.assertEqual(result["type"], "defeat")
+        self.assertEqual(result["reason"], "stability")
+
+    def test_military_0_triggers_defeat(self):
+        """Test that military <= 0 triggers defeat"""
+        self.game.military = 0
+        result = self.game._check_game_end()
+        self.assertIsNotNone(result)
+        self.assertEqual(result["type"], "defeat")
+        self.assertEqual(result["reason"], "military")
+
+    def test_turn_limit_without_victory_triggers_defeat(self):
+        """Test that exceeding max_turns without victory triggers time defeat"""
+        self.game.turn = 21
+        self.game.max_turns = 20
+        self.game.collapse = 50  # Not enough for vacuum
+        self.game.military = 30  # Not enough for vacuum
+        result = self.game._check_game_end()
+        self.assertIsNotNone(result)
+        self.assertEqual(result["type"], "defeat")
+        self.assertEqual(result["reason"], "time")
+
+    def test_vacuum_victory_at_turn_limit(self):
+        """Test that vacuum victory works at turn limit"""
+        self.game.turn = 21
+        self.game.max_turns = 20
+        self.game.collapse = 85
+        self.game.military = 55
+        result = self.game._check_game_end()
+        self.assertIsNotNone(result)
+        self.assertEqual(result["type"], "vacuum")
+        self.assertIsNone(result.get("reason"))
+
+    def test_preservation_victory(self):
+        """Test that collapse 0 triggers preservation victory"""
+        self.game.collapse = 0
+        result = self.game._check_game_end()
+        self.assertIsNotNone(result)
+        self.assertEqual(result["type"], "preservation")
+
+    def test_game_continues_when_no_end_condition(self):
+        """Test that game returns None when no end condition is met"""
+        self.game.turn = 10
+        self.game.max_turns = 20
+        self.game.collapse = 50
+        self.game.stability = 50
+        self.game.military = 40
+        result = self.game._check_game_end()
+        self.assertIsNone(result)
+
+    def test_collapse_99_does_not_trigger_defeat(self):
+        """Test that collapse < 100 does not trigger defeat"""
+        self.game.collapse = 99
+        result = self.game._check_game_end()
+        self.assertIsNone(result)
+
+    def test_defeat_conditions_checked_before_victory(self):
+        """Test that defeat conditions are checked before victory"""
+        # If stability is 0 and collapse is 0, defeat should take precedence
+        self.game.stability = 0
+        self.game.collapse = 0
+        result = self.game._check_game_end()
+        self.assertIsNotNone(result)
+        self.assertEqual(result["type"], "defeat")
+        self.assertEqual(result["reason"], "stability")
+
+
 if __name__ == '__main__':
     unittest.main()

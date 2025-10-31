@@ -11,7 +11,7 @@ from dataclasses import dataclass, field
 import random
 import logging
 import math
-from typing import Dict, List, Optional
+from typing import Any, Dict, List, Optional
 
 # Configure logging
 logger = logging.getLogger(__name__)
@@ -699,6 +699,54 @@ class Game:
             except Exception as recovery_error:
                 logger.error(f"Could not reset flags: {recovery_error}", exc_info=True)
             return False
+
+    def _check_game_end(self) -> Optional[Dict[str, Any]]:
+        """
+        Centralized victory/defeat check.
+        Returns None if game continues, or dict with 'type' and optional 'reason' if game ends.
+        
+        Victory conditions:
+        - Preservation: Reduce collapse to 0 before max_turns
+        - Vacuum: Survive max_turns with collapse >= 80 and military >= 50
+        
+        Defeat conditions:
+        - Collapse reaches 100
+        - Stability reaches 0
+        - Military reaches 0
+        - Time runs out without meeting victory conditions
+        """
+        # Check defeat conditions first (highest priority)
+        if self.collapse >= 100:
+            logger.info("Game end: Collapse reached 100")
+            return {"type": "defeat", "reason": "collapse"}
+        
+        if self.stability <= 0:
+            logger.info("Game end: Stability collapsed to 0")
+            return {"type": "defeat", "reason": "stability"}
+        
+        if self.military <= 0:
+            logger.info("Game end: Military collapsed to 0")
+            return {"type": "defeat", "reason": "military"}
+        
+        # Check if time ran out (exceeds max turns without victory)
+        if self.turn > self.max_turns:
+            # Vacuum victory: survived with high collapse (80+) and strong military (50+)
+            if self.collapse >= 80 and self.military >= 50:
+                logger.info("Game end: Vacuum victory")
+                return {"type": "vacuum"}
+            else:
+                # Time ran out without achieving either victory condition
+                logger.info("Game end: Time ran out")
+                return {"type": "defeat", "reason": "time"}
+        
+        # Check victory conditions (only before exceeding max turns)
+        # Preservation victory: collapse reduced to 0
+        if self.collapse == 0:
+            logger.info("Game end: Preservation victory")
+            return {"type": "preservation"}
+        
+        # Game continues
+        return None
 
     # ------------------------
     # Helpers for templates
