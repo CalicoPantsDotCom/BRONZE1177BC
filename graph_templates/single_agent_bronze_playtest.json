@@ -1,0 +1,116 @@
+{
+  "name": "Single BRONZE Agent Playtest",
+  "description": "Single-agent BRONZE playtesting using Verbalized Sampling to simulate realistic player decision-making",
+  "version": "1.0.0",
+  "nodes": [
+    {
+      "id": "node_1",
+      "block_id": "input_node",
+      "block_type": "InputBlock",
+      "input_default": {
+        "game_state": "Turn 8: You have 350 resources, 2 settlements (1 fortified), 1 scouting party. An enemy Exploiter player has been spotted gathering resources aggressively near your border. Your third settlement site is being contested.",
+        "player_path": "preserver",
+        "game_phase": "mid_game",
+        "available_actions": [
+          "Gather resources sustainably from safe areas",
+          "Build defensive walls around contested settlement",
+          "Send diplomatic envoy to enemy player",
+          "Research sustainable technology",
+          "Launch preemptive defensive strike",
+          "Fortify existing settlements",
+          "Scout enemy's resource operations",
+          "Form alliance with neutral neighbor"
+        ],
+        "previous_actions": [
+          "Turn 5: Built fortified settlement",
+          "Turn 6: Researched eco-friendly farming",
+          "Turn 7: Scouted neutral territory"
+        ]
+      },
+      "metadata": {
+        "position": {"x": 100, "y": 200},
+        "label": "Game State Input"
+      }
+    },
+    {
+      "id": "node_2",
+      "block_id": "d4e5f6a7-8b9c-0d1e-2f3a-4b5c6d7e8f9a",
+      "block_type": "BronzePlaytestAgentBlock",
+      "input_default": {
+        "model": "gpt-4o",
+        "temperature": 0.8,
+        "enable_reasoning": true
+      },
+      "metadata": {
+        "position": {"x": 400, "y": 200},
+        "label": "BRONZE Agent Decision"
+      }
+    },
+    {
+      "id": "node_3",
+      "block_id": "output_node",
+      "block_type": "OutputBlock",
+      "input_default": {},
+      "metadata": {
+        "position": {"x": 700, "y": 200},
+        "label": "Decision Output"
+      }
+    }
+  ],
+  "links": [
+    {
+      "source_id": "node_1",
+      "source_name": "game_state",
+      "sink_id": "node_2",
+      "sink_name": "game_state"
+    },
+    {
+      "source_id": "node_1",
+      "source_name": "player_path",
+      "sink_id": "node_2",
+      "sink_name": "player_path"
+    },
+    {
+      "source_id": "node_1",
+      "source_name": "game_phase",
+      "sink_id": "node_2",
+      "sink_name": "game_phase"
+    },
+    {
+      "source_id": "node_1",
+      "source_name": "available_actions",
+      "sink_id": "node_2",
+      "sink_name": "available_actions"
+    },
+    {
+      "source_id": "node_1",
+      "source_name": "previous_actions",
+      "sink_id": "node_2",
+      "sink_name": "previous_actions"
+    },
+    {
+      "source_id": "node_2",
+      "source_name": "formatted_decision",
+      "sink_id": "node_3",
+      "sink_name": "decision_summary"
+    },
+    {
+      "source_id": "node_2",
+      "source_name": "action_probabilities",
+      "sink_id": "node_3",
+      "sink_name": "probability_distribution"
+    },
+    {
+      "source_id": "node_2",
+      "source_name": "reasoning",
+      "sink_id": "node_3",
+      "sink_name": "agent_reasoning"
+    }
+  ],
+  "metadata": {
+    "author": "Claude Code",
+    "created_at": "2025-10-31",
+    "tags": ["bronze", "single-agent", "verbalized-sampling", "preserver"],
+    "use_case": "Test individual BRONZE player decision-making with probability distributions"
+  }
+}
