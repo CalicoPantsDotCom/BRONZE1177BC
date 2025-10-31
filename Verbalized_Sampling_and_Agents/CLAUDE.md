@@ -171,7 +171,7 @@ Key models (defined in `/backend/schema.prisma`):
 
 **Adding a new block:**
 
-Follow the comprehensive [Block SDK Guide](../../../docs/content/platform/block-sdk-guide.md) which covers:
+Follow the comprehensive [Block SDK Guide](../../../../docs/content/platform/block-sdk-guide.md) which covers:
 
 - Provider configuration with `ProviderBuilder`
 - Block schema definition

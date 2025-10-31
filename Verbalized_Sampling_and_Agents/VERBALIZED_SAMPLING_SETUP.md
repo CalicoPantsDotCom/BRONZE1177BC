@@ -255,11 +255,13 @@ autogpt_platform/
 │       ├── bronze_playtest.py              # BRONZE-specific blocks
 │       ├── playtest_evaluation.py          # Evaluation framework
 │       └── VERBALIZED_SAMPLING_README.md   # Detailed documentation
-├── graph_templates/
-│   ├── bronze_playtest_vs_example.json     # Full playtest template
-│   ├── single_agent_bronze_playtest.json   # Single agent template
-│   └── creative_writing_vs_example.json    # Creative writing template
-└── VERBALIZED_SAMPLING_SETUP.md            # This file
+└── Verbalized_Sampling_and_Agents/
+    ├── graph_templates/
+    │   ├── bronze_playtest_vs_example.json     # Full playtest template
+    │   ├── single_agent_bronze_playtest.json   # Single agent template
+    │   └── creative_writing_vs_example.json    # Creative writing template
+    ├── CLAUDE.md                           # Claude Code guidance
+    └── VERBALIZED_SAMPLING_SETUP.md        # This file
 ```
 
 ## Next Steps
