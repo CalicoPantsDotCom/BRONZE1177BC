@@ -700,6 +700,43 @@ class Game:
                 logger.error(f"Could not reset flags: {recovery_error}", exc_info=True)
             return False
 
+    def _check_game_end(self) -> Optional[Dict[str, any]]:
+        """
+        Centralized victory/defeat check.
+        Returns None if game continues, or dict with 'type' and optional 'reason' if game ends.
+        """
+        # Check defeat conditions first
+        if self.collapse >= 100:
+            logger.info("Game end: Collapse reached 100")
+            return {"type": "defeat", "reason": "collapse"}
+        
+        if self.stability <= 0:
+            logger.info("Game end: Stability collapsed to 0")
+            return {"type": "defeat", "reason": "stability"}
+        
+        if self.military <= 0:
+            logger.info("Game end: Military collapsed to 0")
+            return {"type": "defeat", "reason": "military"}
+        
+        # Check if time ran out (exceeds max turns without victory)
+        if self.turn > self.max_turns:
+            # Check for vacuum victory (high collapse + high military)
+            if self.collapse >= 80 and self.military >= 50:
+                logger.info("Game end: Vacuum victory")
+                return {"type": "vacuum"}
+            else:
+                # Time ran out without achieving victory
+                logger.info("Game end: Time ran out")
+                return {"type": "defeat", "reason": "time"}
+        
+        # Check victory conditions (only before exceeding max turns)
+        if self.collapse == 0:
+            logger.info("Game end: Preservation victory")
+            return {"type": "preservation"}
+        
+        # Game continues
+        return None
+
     # ------------------------
     # Helpers for templates
     # ------------------------

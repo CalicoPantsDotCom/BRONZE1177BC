@@ -110,6 +110,14 @@ def game():
             logger.warning(f"Turn {g.turn} exceeds max_turns {g.max_turns}")
             # Don't reset, just log - game may be in end state
         
+        # Check for victory/defeat conditions on game view load
+        game_result = g._check_game_end()
+        if game_result:
+            logger.info(f"Game ended on view load: {game_result}")
+            session["victory"] = {"type": game_result["type"], "reason": game_result.get("reason"), "final": g.to_dict()}
+            _save_game(g)
+            return redirect(url_for("victory"))
+        
         # Pass game state to template
         return render_template("game.html", game=g.to_dict())
     except Exception as e:
@@ -226,25 +234,11 @@ def choice():
                 if g.end_turn():
                     logger.info(f"Turn auto-advanced to {g.turn}")
                     
-                    # Check for victory/defeat conditions after auto-advance
-                    if g.turn > g.max_turns and g.collapse >= 80 and g.military >= 50:
-                        logger.info("Vacuum victory achieved after choice")
-                        session["victory"] = {"type": "vacuum", "final": g.to_dict()}
-                        _save_game(g)
-                        return redirect(url_for("victory"))
-                    if g.stability <= 0:
-                        logger.info("Defeat: Stability collapsed to 0")
-                        session["victory"] = {"type": "defeat", "reason": "stability", "final": g.to_dict()}
-                        _save_game(g)
-                        return redirect(url_for("victory"))
-                    if g.military <= 0:
-                        logger.info("Defeat: Military collapsed to 0")
-                        session["victory"] = {"type": "defeat", "reason": "military", "final": g.to_dict()}
-                        _save_game(g)
-                        return redirect(url_for("victory"))
-                    if g.collapse == 0:
-                        logger.info("Preservation victory achieved after choice")
-                        session["victory"] = {"type": "preservation", "final": g.to_dict()}
+                    # Check for victory/defeat conditions after auto-advance using centralized function
+                    game_result = g._check_game_end()
+                    if game_result:
+                        logger.info(f"Game ended after choice: {game_result}")
+                        session["victory"] = {"type": game_result["type"], "reason": game_result.get("reason"), "final": g.to_dict()}
                         _save_game(g)
                         return redirect(url_for("victory"))
                 else:
@@ -284,30 +278,12 @@ def end_turn():
 
         logger.info(f"Turn {g.turn - 1} ended successfully, now on turn {g.turn}")
 
-        # Check victory/defeat conditions with better separation
+        # Check victory/defeat conditions using centralized function
         try:
-            if g.turn > g.max_turns and g.collapse >= 80 and g.military >= 50:
-                # Vacuum victory
-                logger.info("Vacuum victory achieved")
-                session["victory"] = {"type": "vacuum", "final": g.to_dict()}
-                _save_game(g)
-                return redirect(url_for("victory"))
-
-            # Separate defeat conditions for better handling
-            if g.stability <= 0:
-                logger.info("Defeat: Stability collapsed to 0")
-                session["victory"] = {"type": "defeat", "reason": "stability", "final": g.to_dict()}
-                _save_game(g)
-                return redirect(url_for("victory"))
-            if g.military <= 0:
-                logger.info("Defeat: Military collapsed to 0")
-                session["victory"] = {"type": "defeat", "reason": "military", "final": g.to_dict()}
-                _save_game(g)
-                return redirect(url_for("victory"))
-
-            if g.collapse == 0:
-                logger.info("Preservation victory achieved")
-                session["victory"] = {"type": "preservation", "final": g.to_dict()}
+            game_result = g._check_game_end()
+            if game_result:
+                logger.info(f"Game ended: {game_result}")
+                session["victory"] = {"type": game_result["type"], "reason": game_result.get("reason"), "final": g.to_dict()}
                 _save_game(g)
                 return redirect(url_for("victory"))
         except Exception as victory_check_error:
