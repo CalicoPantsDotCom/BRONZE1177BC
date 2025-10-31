@@ -778,3 +778,88 @@ class Game:
                 "previous_turn_summary": None,
                 "pending_choice": None,
             }
+
+    @staticmethod
+    def from_dict(data: Dict) -> Game:
+        """Reconstruct Game from dictionary (for session storage)"""
+        try:
+            g = Game()
+            
+            # Core resources/metrics
+            g.turn = data.get("turn", 1)
+            g.max_turns = data.get("max_turns", 20)
+            g.difficulty = data.get("difficulty", "normal")
+            g.grain = data.get("grain", 50)
+            g.bronze = data.get("bronze", 30)
+            g.timber = data.get("timber", 20)
+            g.prestige = data.get("prestige", 10)
+            g.stability = data.get("stability", 65)
+            g.knowledge = data.get("knowledge", 40)
+            g.elasticity = data.get("elasticity", 50)
+            g.military = data.get("military", 30)
+            g.collapse = data.get("collapse", 45)
+            
+            # Turn tracking
+            g.free_harvest_used = data.get("free_harvest_used", False)
+            g.paid_action_used = data.get("paid_action_used", False)
+            g.withdrawals_used = data.get("withdrawals_used", 0)
+            g.max_withdrawals = data.get("max_withdrawals", 3)
+            
+            # Tech flags
+            tech = data.get("tech", {})
+            g.tech_imperial_bureaucracy = tech.get("imperial_bureaucracy", False)
+            g.tech_bronze_mines = tech.get("bronze_mines", False)
+            g.tech_granary_network = tech.get("granary_network", False)
+            g.tech_alphabetic_script = tech.get("alphabetic_script", False)
+            g.tech_ironworking = tech.get("ironworking", False)
+            g.tech_diplomatic_protocols = tech.get("diplomatic_protocols", False)
+            g.tech_tin_trade_routes = tech.get("tin_trade_routes", False)
+            g.tech_phalanx_formation = tech.get("phalanx_formation", False)
+            g.tech_diplomatic_marriage = tech.get("diplomatic_marriage", False)
+            
+            # Build flags
+            builds = data.get("builds", {})
+            g.has_granary = builds.get("granary", False)
+            g.has_library = builds.get("library", False)
+            g.has_walls = builds.get("walls", False)
+            g.has_bronze_mine = builds.get("bronze_mine", False)
+            g.has_barracks = builds.get("barracks", False)
+            g.has_palace = builds.get("palace", False)
+            g.has_lighthouse = builds.get("lighthouse", False)
+            g.has_watchtower = builds.get("watchtower", False)
+            
+            # Message log and actions
+            g.message_log = data.get("message_log", [])
+            g.current_turn_actions = data.get("current_turn_actions", [])
+            
+            # Turn summary (reconstruct from dict)
+            ts_data = data.get("previous_turn_summary")
+            if ts_data:
+                g.previous_turn_summary = TurnSummary(
+                    turn_number=ts_data.get("turn_number", 1),
+                    actions=ts_data.get("actions", []),
+                    events=ts_data.get("events", []),
+                    income=ts_data.get("income", []),
+                    drift=ts_data.get("drift", [])
+                )
+            
+            # Choice event (reconstruct from dict)
+            ce_data = data.get("pending_choice")
+            if ce_data:
+                g.pending_choice = ChoiceEvent(
+                    event_id=ce_data.get("event_id", ""),
+                    title=ce_data.get("title", ""),
+                    description=ce_data.get("description", ""),
+                    choice_a_label=ce_data.get("choice_a_label", ""),
+                    choice_a_effects=ce_data.get("choice_a_effects", ""),
+                    choice_b_label=ce_data.get("choice_b_label", ""),
+                    choice_b_effects=ce_data.get("choice_b_effects", "")
+                )
+            
+            logger.info(f"Successfully reconstructed game from dict (turn {g.turn})")
+            return g
+            
+        except Exception as e:
+            logger.error(f"Error in from_dict: {e}", exc_info=True)
+            # Return new game as fallback
+            return Game()
