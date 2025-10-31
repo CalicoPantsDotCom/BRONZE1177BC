@@ -8,12 +8,30 @@ document.addEventListener('DOMContentLoaded', function() {
     alerts.forEach(alert => {
         setTimeout(() => {
             try {
-                const bsAlert = new bootstrap.Alert(alert);
-                bsAlert.close();
+                // Manually fade out and remove (no Bootstrap needed)
+                alert.style.opacity = '0';
+                alert.style.transition = 'opacity 0.3s';
+                setTimeout(() => alert.remove(), 300);
             } catch (e) {
                 console.error('Error dismissing alert:', e);
             }
         }, 5000);
+    });
+
+    // Close button functionality for alerts (no Bootstrap needed)
+    document.querySelectorAll('.btn-close').forEach(button => {
+        button.addEventListener('click', function() {
+            try {
+                const alert = this.closest('.alert');
+                if (alert) {
+                    alert.style.opacity = '0';
+                    alert.style.transition = 'opacity 0.3s';
+                    setTimeout(() => alert.remove(), 300);
+                }
+            } catch (e) {
+                console.error('Error closing alert:', e);
+            }
+        });
     });
 
     // Add loading state to action buttons and error handling
